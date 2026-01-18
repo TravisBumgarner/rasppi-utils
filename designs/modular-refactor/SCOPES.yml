@@ -89,7 +89,7 @@ tasks:
       - Include comments explaining the format
     depends_on: []
     effort: 1
-    status: implementing
+    status: completed
 
   - id: 5
     github_issue: 13
