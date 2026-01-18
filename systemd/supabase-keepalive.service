@@ -1,0 +1,13 @@
+[Unit]
+Description=Supabase Keep-Alive - Prevents free-tier project pausing
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/rasppi-utils
+ExecStart=/opt/rasppi-utils/.venv/bin/python /opt/rasppi-utils/scripts/supabase_keepalive.py
+EnvironmentFile=/etc/rasppi-utils/.env
+
+[Install]
+WantedBy=multi-user.target
