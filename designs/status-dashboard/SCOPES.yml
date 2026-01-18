@@ -26,7 +26,7 @@ tasks:
       - Add flask to requirements.txt
     depends_on: []
     effort: 1
-    status: scoped
+    status: implementing
 
   - id: 2
     github_issue: 28
