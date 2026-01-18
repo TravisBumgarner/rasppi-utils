@@ -89,4 +89,4 @@ tasks:
       - Script is idempotent
     depends_on: [1, 2, 3]
     effort: 2
-    status: scoped
+    status: implementing
