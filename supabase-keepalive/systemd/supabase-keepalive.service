@@ -5,9 +5,9 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-WorkingDirectory=/opt/rasppi-utils
-ExecStart=/opt/rasppi-utils/.venv/bin/python /opt/rasppi-utils/scripts/supabase_keepalive.py
-EnvironmentFile=/etc/rasppi-utils/.env
+WorkingDirectory=/opt/rasppi-utils/supabase-keepalive
+ExecStart=/opt/rasppi-utils/.venv/bin/python /opt/rasppi-utils/supabase-keepalive/scripts/keepalive.py
+EnvironmentFile=/etc/rasppi-utils/supabase-keepalive/.env
 
 [Install]
 WantedBy=multi-user.target
