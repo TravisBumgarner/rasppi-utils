@@ -1,0 +1,110 @@
+project: status-dashboard
+repo: travisbumgarner/rasppi-utils
+design_file: designs/status-dashboard/DESIGN.md
+scoping_date: 2026-01-18
+
+milestones:
+  - number: 1
+    title: "Status Dashboard"
+    description: Add a simple web dashboard utility to view utility status and logs
+    branch:
+      working: 27-status-dashboard
+      base: main
+
+tasks:
+  - id: 1
+    github_issue: 27
+    milestone: 1
+    title: Create status-dashboard utility structure
+    description: |
+      Create the directory structure and configuration for the status-dashboard utility
+      following the existing utility pattern (scripts/, config/, systemd/).
+    acceptance_criteria:
+      - Create status-dashboard/ directory with scripts/, config/, systemd/ subdirectories
+      - Create config/.env.example with PORT=8080 configuration
+      - Create empty scripts/__init__.py
+      - Add flask to requirements.txt
+    depends_on: []
+    effort: 1
+    status: scoped
+
+  - id: 2
+    github_issue: 28
+    milestone: 1
+    title: Implement utility status retrieval
+    description: |
+      Implement a function to retrieve the status of all utilities by parsing
+      systemctl output. This provides the data for the status dashboard.
+    acceptance_criteria:
+      - Function to get list of enabled utilities from utilities.conf
+      - Function to get service/timer status using systemctl is-active and is-enabled
+      - Return structured data with utility name, services, and timers with their states
+      - Handle cases where services/timers don't exist gracefully
+    depends_on: [1]
+    effort: 2
+    status: scoped
+
+  - id: 3
+    github_issue: 29
+    milestone: 1
+    title: Implement log retrieval
+    description: |
+      Implement a function to retrieve recent logs for a utility from the
+      systemd journal using journalctl.
+    acceptance_criteria:
+      - Function to get logs using journalctl -u <service> --no-pager -n <count> --output=json
+      - Parse JSON output into structured log entries with timestamp and message
+      - Accept parameters for utility name and number of entries (default 50)
+      - Handle errors gracefully (service doesn't exist, no logs, etc.)
+    depends_on: [1]
+    effort: 2
+    status: scoped
+
+  - id: 4
+    github_issue: 30
+    milestone: 1
+    title: Create Flask web server with dashboard
+    description: |
+      Create the Flask web server that serves the dashboard HTML page and
+      API endpoints for status and logs.
+    acceptance_criteria:
+      - Flask app in scripts/server.py
+      - GET / serves HTML dashboard page showing utility status and log viewer
+      - GET /api/status returns JSON with utility status
+      - GET /api/logs/<utility> returns JSON with recent logs
+      - Read PORT from environment variable (default 8080)
+      - Simple functional HTML with auto-refresh
+    depends_on: [2, 3]
+    effort: 3
+    status: scoped
+
+  - id: 5
+    github_issue: 31
+    milestone: 1
+    title: Create systemd service for dashboard
+    description: |
+      Create the systemd service file for running the dashboard as a
+      long-running service (not a timer-triggered oneshot).
+    acceptance_criteria:
+      - Create systemd/status-dashboard.service with {{INSTALL_DIR}} placeholders
+      - Service type is simple (long-running)
+      - Configure Restart=always for reliability
+      - Reference EnvironmentFile at /etc/rasppi-utils/status-dashboard/.env
+    depends_on: [4]
+    effort: 1
+    status: scoped
+
+  - id: 6
+    github_issue: 32
+    milestone: 1
+    title: Update documentation for status-dashboard
+    description: |
+      Update project documentation to include the new status-dashboard utility.
+    acceptance_criteria:
+      - Add status-dashboard to utilities.conf (commented out by default)
+      - Add status-dashboard section to README.md under Utility Configuration
+      - Document how to access the dashboard (http://<pi-ip>:8080)
+      - Note about local network access only (no auth)
+    depends_on: [5]
+    effort: 1
+    status: scoped
