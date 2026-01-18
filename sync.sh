@@ -142,7 +142,7 @@ prompt_for_config() {
 
             echo "Enter value for ${var_name}"
             echo "  (default: ${default_value})"
-            read -p "  > " user_value
+            read -p "  > " user_value < /dev/tty
 
             if [[ -z "$user_value" ]]; then
                 user_value="$default_value"
