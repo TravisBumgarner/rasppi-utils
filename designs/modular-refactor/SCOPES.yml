@@ -151,4 +151,4 @@ tasks:
       - Update instructions
     depends_on: [5, 6]
     effort: 2
-    status: implementing
+    status: completed
