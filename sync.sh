@@ -10,7 +10,6 @@
 set -e
 
 # Configuration
-INSTALL_DIR="/opt/rasppi-utils"
 CONFIG_DIR="/etc/rasppi-utils"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -164,11 +163,11 @@ install_systemd_units() {
 
     log_info "Installing systemd units for ${utility}..."
 
-    # Install service files
+    # Install service files (replacing {{INSTALL_DIR}} placeholder with actual path)
     for unit_file in "${systemd_src}"/*.service; do
         if [[ -f "$unit_file" ]]; then
             local unit_name=$(basename "$unit_file")
-            cp "$unit_file" "/etc/systemd/system/${unit_name}"
+            sed "s|{{INSTALL_DIR}}|${SCRIPT_DIR}|g" "$unit_file" > "/etc/systemd/system/${unit_name}"
             log_info "  Installed ${unit_name}"
         fi
     done
