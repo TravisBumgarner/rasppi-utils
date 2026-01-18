@@ -1,0 +1,15 @@
+[Unit]
+Description=Status Dashboard - Web interface for rasppi-utils
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory={{INSTALL_DIR}}/status-dashboard
+ExecStart={{INSTALL_DIR}}/.venv/bin/python {{INSTALL_DIR}}/status-dashboard/scripts/server.py
+EnvironmentFile=/etc/rasppi-utils/status-dashboard/.env
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
