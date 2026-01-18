@@ -16,45 +16,64 @@ This repository provides automated scripts that run on a Raspberry Pi to perform
 
 ## Installation
 
-### Step 1: Set Up SSH Key for GitHub
+### Step 1: Prepare Your Raspberry Pi
+
+Ensure your Pi is up to date:
+
+```bash
+sudo apt update && sudo apt full-upgrade -y
+```
+
+### Step 2: Set Up SSH Key for GitHub
 
 Since this is a private repository, you need an SSH key to clone it.
 
-```bash
-# Generate an SSH key
-ssh-keygen -t ed25519 -C "raspberrypi"
+**Generate an SSH key:**
 
-# Display your public key
+```bash
+ssh-keygen -t ed25519 -C "raspberrypi"
+```
+
+Press Enter to accept the default location and optionally set a passphrase.
+
+**Display your public key:**
+
+```bash
 cat ~/.ssh/id_ed25519.pub
 ```
 
-Add the key to GitHub:
+**Add the key to GitHub:**
+
 1. Go to [GitHub SSH Keys Settings](https://github.com/settings/keys)
 2. Click "New SSH key"
-3. Paste your public key and save
+3. Give it a title (e.g., "Raspberry Pi")
+4. Paste your public key
+5. Click "Add SSH key"
 
-Test the connection:
+**Test the connection:**
+
 ```bash
 ssh -T git@github.com
 ```
 
-### Step 2: Clone and Bootstrap
+You should see: "Hi username! You've successfully authenticated..."
+
+### Step 3: Clone and Bootstrap
 
 ```bash
-cd ~
 git clone git@github.com:travisbumgarner/rasppi-utils.git
 cd rasppi-utils
 sudo ./bootstrap.sh
 ```
 
 The bootstrap script will:
-- Install system dependencies (python3, pip, venv)
+- Install system dependencies (python3, pip, venv, git)
 - Set up the Python virtual environment
 - Install Python dependencies
 - Create the configuration directory at `/etc/rasppi-utils/`
 - Run `sync.sh` to configure enabled utilities
 
-During the sync process, you'll be prompted to configure any enabled utilities.
+During the sync process, you'll be prompted to configure any enabled utilities that don't have configuration yet.
 
 ## Managing Utilities
 
@@ -63,7 +82,7 @@ During the sync process, you'll be prompted to configure any enabled utilities.
 Edit `utilities.conf` to control which utilities are active:
 
 ```bash
-nano ~/rasppi-utils/utilities.conf
+sudo nano /opt/rasppi-utils/utilities.conf
 ```
 
 ```
@@ -77,13 +96,15 @@ supabase-keepalive
 After editing, apply changes:
 
 ```bash
-sudo ~/rasppi-utils/sync.sh
+sudo /opt/rasppi-utils/sync.sh
 ```
 
 ### Check Utility Status
 
+View the status of all utilities and their systemd services:
+
 ```bash
-sudo ~/rasppi-utils/sync.sh --status
+sudo /opt/rasppi-utils/sync.sh --status
 ```
 
 ## Utility Configuration
@@ -92,73 +113,122 @@ sudo ~/rasppi-utils/sync.sh --status
 
 Prevents Supabase free-tier projects from pausing by making a daily API call.
 
-**Configuration** is stored at `/etc/rasppi-utils/supabase-keepalive/.env`
+**Configuration:**
+
+The configuration is stored at `/etc/rasppi-utils/supabase-keepalive/.env`
 
 Required settings:
 - `SUPABASE_URL`: Your Supabase project URL (e.g., `https://your-project.supabase.co`)
 - `SUPABASE_KEY`: Your Supabase anon/public key
 
-Get your credentials from [Supabase Dashboard](https://app.supabase.com/) > Project > Settings > API
+**Get your credentials:**
 
-**Schedule:** Runs daily via systemd timer with a randomized delay of up to 1 hour.
+1. Go to your [Supabase Dashboard](https://app.supabase.com/)
+2. Select your project
+3. Go to Settings > API
+4. Copy the "Project URL" and "anon public" key
+
+**Schedule:**
+
+Runs daily via systemd timer with a randomized delay of up to 1 hour.
 
 ## Troubleshooting
 
 ### View Service Logs
 
 ```bash
-# View recent logs
+# View recent logs for a specific service
 sudo journalctl -u supabase-keepalive.service -n 50
 
 # Follow logs in real-time
 sudo journalctl -u supabase-keepalive.service -f
-```
 
-### Check Timer Status
-
-```bash
-sudo systemctl list-timers
+# View timer status
 sudo systemctl status supabase-keepalive.timer
 ```
 
 ### Manually Run a Utility
 
 ```bash
-sudo ~/rasppi-utils/.venv/bin/python ~/rasppi-utils/supabase-keepalive/scripts/keepalive.py
+# Run the keepalive script manually
+sudo /opt/rasppi-utils/.venv/bin/python /opt/rasppi-utils/supabase-keepalive/scripts/keepalive.py
+```
+
+### Check Timer Schedule
+
+```bash
+# List all timers and when they'll run next
+sudo systemctl list-timers
+
+# Check specific timer
+sudo systemctl status supabase-keepalive.timer
 ```
 
 ### Common Issues
 
 **Service fails to start:**
-- Check logs with `journalctl`
+- Check the logs with `journalctl`
 - Verify configuration exists at `/etc/rasppi-utils/<utility>/.env`
+- Ensure the virtual environment is set up: `/opt/rasppi-utils/.venv/`
 
 **GitHub clone fails:**
-- Test SSH connection: `ssh -T git@github.com`
-- Check key permissions: `chmod 600 ~/.ssh/id_ed25519`
+- Verify SSH key is added to GitHub
+- Test connection: `ssh -T git@github.com`
+- Check SSH key permissions: `chmod 600 ~/.ssh/id_ed25519`
 
 ## Updating
 
+To update to the latest version:
+
 ```bash
-cd ~/rasppi-utils
-git pull
+cd /opt/rasppi-utils
+sudo git pull
 sudo ./bootstrap.sh
 ```
+
+This will:
+- Pull the latest code
+- Update Python dependencies if needed
+- Re-sync utilities (preserving your configuration)
 
 ## Project Structure
 
 ```
 rasppi-utils/
-├── bootstrap.sh              # One-time setup
+├── bootstrap.sh              # One-time Pi setup
 ├── sync.sh                   # Utility management
-├── utilities.conf            # Enabled utilities
+├── utilities.conf            # Which utilities are enabled
 ├── requirements.txt          # Python dependencies
-└── supabase-keepalive/       # Self-contained utility
-    ├── scripts/
-    │   └── keepalive.py
-    ├── config/
-    │   └── .env.example
-    └── systemd/
-        ├── supabase-keepalive.service
-        └── supabase-keepalive.timer
+├── supabase-keepalive/       # Self-contained utility
+│   ├── scripts/
+│   │   └── keepalive.py
+│   ├── config/
+│   │   └── .env.example
+│   └── systemd/
+│       ├── supabase-keepalive.service
+│       └── supabase-keepalive.timer
+└── tests/
+    └── supabase-keepalive/
+        └── test_keepalive.py
 ```
+
+## Adding New Utilities
+
+Each utility follows this structure:
+
+```
+utility-name/
+├── scripts/           # Executable scripts
+│   └── main.py
+├── config/
+│   └── .env.example   # Configuration template
+└── systemd/
+    ├── utility-name.service
+    └── utility-name.timer    # Optional, for scheduled tasks
+```
+
+To add a new utility:
+1. Create the directory structure
+2. Add systemd units referencing `/opt/rasppi-utils/utility-name/`
+3. Add the utility name to `utilities.conf`
+4. Run `sudo ./sync.sh`
