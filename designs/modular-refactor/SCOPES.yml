@@ -1,0 +1,154 @@
+project: modular-refactor
+repo: travisbumgarner/rasppi-utils
+design_file: designs/modular-refactor/DESIGN.md
+scoping_date: 2026-01-18
+
+milestones:
+  - number: 1
+    title: "1. Restructure to Utility-First Layout"
+    description: Reorganize project to utility-first directory structure where each utility is self-contained
+    branch:
+      working: 9-restructure-utility-first
+      base: main
+
+  - number: 2
+    title: "2. Implement Utility Management Scripts"
+    description: Split bootstrap.sh into bootstrap (one-time setup) and sync.sh (utility management)
+    branch:
+      working: 12-utility-management-scripts
+      base: main
+
+  - number: 3
+    title: "3. Documentation"
+    description: Comprehensive README with full setup instructions including SSH for private repo
+    branch:
+      working: 15-comprehensive-readme
+      base: main
+
+tasks:
+  - id: 1
+    github_issue: 9
+    milestone: 1
+    title: Move supabase-keepalive to utility-first directory structure
+    description: |
+      Reorganize the supabase-keepalive utility from the flat structure to a self-contained
+      utility directory with scripts/, config/, and systemd/ subdirectories.
+    acceptance_criteria:
+      - Create supabase-keepalive/ directory with scripts/, config/, systemd/ subdirectories
+      - Move scripts/supabase_keepalive.py to supabase-keepalive/scripts/keepalive.py
+      - Move config/.env.example to supabase-keepalive/config/.env.example
+      - Move systemd units to supabase-keepalive/systemd/
+      - Remove old empty directories
+    depends_on: []
+    effort: 2
+    status: scoped
+
+  - id: 2
+    github_issue: 10
+    milestone: 1
+    title: Update systemd unit file paths for new structure
+    description: |
+      Update the systemd service file to reference the new utility-first directory paths:
+      - ExecStart: /opt/rasppi-utils/supabase-keepalive/scripts/keepalive.py
+      - WorkingDirectory: /opt/rasppi-utils/supabase-keepalive
+      - EnvironmentFile: /etc/rasppi-utils/supabase-keepalive/.env
+    acceptance_criteria:
+      - Update supabase-keepalive.service ExecStart path
+      - Update WorkingDirectory to utility directory
+      - Update EnvironmentFile path to /etc/rasppi-utils/supabase-keepalive/.env
+    depends_on: [1]
+    effort: 1
+    status: scoped
+
+  - id: 3
+    github_issue: 11
+    milestone: 1
+    title: Update tests for new directory structure
+    description: |
+      Update test files to reflect the new utility-first directory structure.
+      Move tests to tests/supabase-keepalive/ and update imports.
+    acceptance_criteria:
+      - Create tests/supabase-keepalive/ directory
+      - Move and rename test file to tests/supabase-keepalive/test_keepalive.py
+      - Update imports to reference new module path
+      - Verify all tests pass with pytest
+    depends_on: [1]
+    effort: 1
+    status: scoped
+
+  - id: 4
+    github_issue: 12
+    milestone: 2
+    title: Create utilities.conf for enabled utilities
+    description: |
+      Create a simple configuration file that lists which utilities are enabled.
+      This file will be read by sync.sh to determine what to install/enable.
+    acceptance_criteria:
+      - Create utilities.conf in project root
+      - Include supabase-keepalive as enabled by default
+      - Include comments explaining the format
+    depends_on: []
+    effort: 1
+    status: implementing
+
+  - id: 5
+    github_issue: 13
+    milestone: 2
+    title: Rewrite bootstrap.sh for one-time Pi setup
+    description: |
+      Rewrite bootstrap.sh to focus solely on one-time Raspberry Pi setup.
+      Remove utility-specific logic (that moves to sync.sh).
+
+      New responsibilities: system deps, SSH key for GitHub, clone repo,
+      create venv, install deps, call sync.sh.
+    acceptance_criteria:
+      - Install system dependencies (python3, python3-pip, python3-venv, git)
+      - Check for existing SSH key, offer to generate if missing
+      - Display SSH public key and prompt user to add to GitHub
+      - Clone repo to /opt/rasppi-utils (or git pull if exists)
+      - Create/update Python venv and install dependencies
+      - Create /etc/rasppi-utils/ directory
+      - Call sync.sh at the end
+      - Script is idempotent
+    depends_on: [4]
+    effort: 3
+    status: scoped
+
+  - id: 6
+    github_issue: 14
+    milestone: 2
+    title: Create sync.sh for utility management
+    description: |
+      Create sync.sh script that manages which utilities are enabled/disabled
+      based on utilities.conf. Handles utility-specific configuration and
+      systemd integration.
+    acceptance_criteria:
+      - Read utilities.conf to get list of enabled utilities
+      - For enabled utilities: configure, install systemd units, enable and start
+      - For disabled utilities: stop, disable, remove systemd units
+      - Implement --status flag to show status of all utilities
+      - Prompt for utility config if .env doesn't exist
+      - Reload systemd daemon after making changes
+      - Script is idempotent
+    depends_on: [1, 2, 4]
+    effort: 3
+    status: scoped
+
+  - id: 7
+    github_issue: 15
+    milestone: 3
+    title: Write comprehensive README with full setup instructions
+    description: |
+      Replace the minimal README with comprehensive setup instructions.
+      Include SSH key setup for GitHub access since this is a private repo.
+    acceptance_criteria:
+      - Clear overview of project purpose
+      - Complete SSH key setup instructions for private repo
+      - Step-by-step installation guide
+      - Utility management instructions (enable/disable)
+      - Per-utility configuration documentation
+      - Troubleshooting/monitoring commands
+      - Update instructions
+    depends_on: [5, 6]
+    effort: 2
+    status: scoped
