@@ -61,17 +61,20 @@ You should see: "Hi username! You've successfully authenticated..."
 ### Step 3: Clone and Bootstrap
 
 ```bash
+cd ~
 git clone git@github.com:travisbumgarner/rasppi-utils.git
 cd rasppi-utils
 sudo ./bootstrap.sh
 ```
 
 The bootstrap script will:
-- Install system dependencies (python3, pip, venv, git)
+- Install system dependencies (python3, pip, venv)
 - Set up the Python virtual environment
 - Install Python dependencies
 - Create the configuration directory at `/etc/rasppi-utils/`
 - Run `sync.sh` to configure enabled utilities
+
+The repository can be cloned to any location - the scripts use their own directory as the installation path.
 
 During the sync process, you'll be prompted to configure any enabled utilities that don't have configuration yet.
 
@@ -82,7 +85,7 @@ During the sync process, you'll be prompted to configure any enabled utilities t
 Edit `utilities.conf` to control which utilities are active:
 
 ```bash
-sudo nano /opt/rasppi-utils/utilities.conf
+sudo nano ~/rasppi-utils/utilities.conf
 ```
 
 ```
@@ -96,7 +99,7 @@ supabase-keepalive
 After editing, apply changes:
 
 ```bash
-sudo /opt/rasppi-utils/sync.sh
+sudo ~/rasppi-utils/sync.sh
 ```
 
 ### Check Utility Status
@@ -104,7 +107,7 @@ sudo /opt/rasppi-utils/sync.sh
 View the status of all utilities and their systemd services:
 
 ```bash
-sudo /opt/rasppi-utils/sync.sh --status
+sudo ~/rasppi-utils/sync.sh --status
 ```
 
 ## Utility Configuration
@@ -151,7 +154,7 @@ sudo systemctl status supabase-keepalive.timer
 
 ```bash
 # Run the keepalive script manually
-sudo /opt/rasppi-utils/.venv/bin/python /opt/rasppi-utils/supabase-keepalive/scripts/keepalive.py
+sudo ~/rasppi-utils/.venv/bin/python ~/rasppi-utils/supabase-keepalive/scripts/keepalive.py
 ```
 
 ### Check Timer Schedule
@@ -169,7 +172,7 @@ sudo systemctl status supabase-keepalive.timer
 **Service fails to start:**
 - Check the logs with `journalctl`
 - Verify configuration exists at `/etc/rasppi-utils/<utility>/.env`
-- Ensure the virtual environment is set up: `/opt/rasppi-utils/.venv/`
+- Ensure the virtual environment is set up: `~/rasppi-utils/.venv/`
 
 **GitHub clone fails:**
 - Verify SSH key is added to GitHub
@@ -181,8 +184,8 @@ sudo systemctl status supabase-keepalive.timer
 To update to the latest version:
 
 ```bash
-cd /opt/rasppi-utils
-sudo git pull
+cd ~/rasppi-utils
+git pull
 sudo ./bootstrap.sh
 ```
 
@@ -229,6 +232,6 @@ utility-name/
 
 To add a new utility:
 1. Create the directory structure
-2. Add systemd units referencing `/opt/rasppi-utils/utility-name/`
+2. Add systemd units using `{{INSTALL_DIR}}` placeholder for paths (will be replaced during installation)
 3. Add the utility name to `utilities.conf`
 4. Run `sudo ./sync.sh`
