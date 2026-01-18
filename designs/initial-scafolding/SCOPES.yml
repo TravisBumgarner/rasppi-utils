@@ -68,7 +68,7 @@ tasks:
       - Timer is configured with WantedBy=timers.target
     depends_on: [2]
     effort: 1
-    status: scoped
+    status: completed
 
   - id: 4
     github_issue: 4
