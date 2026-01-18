@@ -1,11 +1,23 @@
 """Tests for the Supabase keep-alive script."""
 
+import importlib.util
 import os
+import sys
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from scripts.supabase_keepalive import load_config, main, ping_supabase
+# Load the keepalive module from the hyphenated directory
+_module_path = Path(__file__).parent.parent.parent / "supabase-keepalive" / "scripts" / "keepalive.py"
+_spec = importlib.util.spec_from_file_location("keepalive", _module_path)
+keepalive = importlib.util.module_from_spec(_spec)
+sys.modules["keepalive"] = keepalive
+_spec.loader.exec_module(keepalive)
+
+load_config = keepalive.load_config
+main = keepalive.main
+ping_supabase = keepalive.ping_supabase
 
 
 class TestLoadConfig:
@@ -63,7 +75,7 @@ class TestPingSupabase:
         )
 
         with patch(
-            "scripts.supabase_keepalive.create_client", return_value=mock_client
+            "keepalive.create_client", return_value=mock_client
         ):
             result = ping_supabase("https://test.supabase.co", "test-key")
 
@@ -72,7 +84,7 @@ class TestPingSupabase:
     def test_returns_false_on_connection_error(self):
         """Should return False when Supabase connection fails."""
         with patch(
-            "scripts.supabase_keepalive.create_client",
+            "keepalive.create_client",
             side_effect=Exception("Connection failed"),
         ):
             result = ping_supabase("https://test.supabase.co", "test-key")
@@ -87,7 +99,7 @@ class TestPingSupabase:
         )
 
         with patch(
-            "scripts.supabase_keepalive.create_client", return_value=mock_client
+            "keepalive.create_client", return_value=mock_client
         ):
             result = ping_supabase("https://test.supabase.co", "test-key")
 
@@ -101,10 +113,10 @@ class TestMain:
         """Should return exit code 0 when ping succeeds."""
         with (
             patch(
-                "scripts.supabase_keepalive.load_config",
+                "keepalive.load_config",
                 return_value={"url": "https://test.supabase.co", "key": "test-key"},
             ),
-            patch("scripts.supabase_keepalive.ping_supabase", return_value=True),
+            patch("keepalive.ping_supabase", return_value=True),
         ):
             result = main()
 
@@ -114,10 +126,10 @@ class TestMain:
         """Should return exit code 1 when ping fails."""
         with (
             patch(
-                "scripts.supabase_keepalive.load_config",
+                "keepalive.load_config",
                 return_value={"url": "https://test.supabase.co", "key": "test-key"},
             ),
-            patch("scripts.supabase_keepalive.ping_supabase", return_value=False),
+            patch("keepalive.ping_supabase", return_value=False),
         ):
             result = main()
 
@@ -126,7 +138,7 @@ class TestMain:
     def test_returns_one_on_config_error(self):
         """Should return exit code 1 when config loading fails."""
         with patch(
-            "scripts.supabase_keepalive.load_config",
+            "keepalive.load_config",
             side_effect=ValueError("Missing credentials"),
         ):
             result = main()
@@ -141,8 +153,8 @@ class TestMain:
         )
 
         with (
-            patch("scripts.supabase_keepalive.load_config") as mock_load,
-            patch("scripts.supabase_keepalive.ping_supabase", return_value=True),
+            patch("keepalive.load_config") as mock_load,
+            patch("keepalive.ping_supabase", return_value=True),
         ):
             mock_load.return_value = {
                 "url": "https://test.supabase.co",
