@@ -41,7 +41,7 @@ tasks:
       - Remove old empty directories
     depends_on: []
     effort: 2
-    status: scoped
+    status: implementing
 
   - id: 2
     github_issue: 10
