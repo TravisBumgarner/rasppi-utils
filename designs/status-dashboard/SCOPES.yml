@@ -26,7 +26,7 @@ tasks:
       - Add flask to requirements.txt
     depends_on: []
     effort: 1
-    status: scoped
+    status: completed
 
   - id: 2
     github_issue: 28
@@ -42,7 +42,7 @@ tasks:
       - Handle cases where services/timers don't exist gracefully
     depends_on: [1]
     effort: 2
-    status: scoped
+    status: completed
 
   - id: 3
     github_issue: 29
@@ -58,7 +58,7 @@ tasks:
       - Handle errors gracefully (service doesn't exist, no logs, etc.)
     depends_on: [1]
     effort: 2
-    status: scoped
+    status: completed
 
   - id: 4
     github_issue: 30
@@ -76,7 +76,7 @@ tasks:
       - Simple functional HTML with auto-refresh
     depends_on: [2, 3]
     effort: 3
-    status: scoped
+    status: completed
 
   - id: 5
     github_issue: 31
@@ -92,7 +92,7 @@ tasks:
       - Reference EnvironmentFile at /etc/rasppi-utils/status-dashboard/.env
     depends_on: [4]
     effort: 1
-    status: scoped
+    status: completed
 
   - id: 6
     github_issue: 32
@@ -107,4 +107,4 @@ tasks:
       - Note about local network access only (no auth)
     depends_on: [5]
     effort: 1
-    status: scoped
+    status: completed

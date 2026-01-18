@@ -7,6 +7,7 @@ A collection of utilities for Raspberry Pi, designed with a modular architecture
 This repository provides automated scripts that run on a Raspberry Pi to perform various background tasks. Currently includes:
 
 - **supabase-keepalive**: Prevents Supabase free-tier projects from pausing due to inactivity by making daily API calls
+- **status-dashboard**: Web interface to view utility status and logs from your browser
 
 ## Prerequisites
 
@@ -135,6 +136,23 @@ Required settings:
 
 Runs daily via systemd timer with a randomized delay of up to 1 hour.
 
+### status-dashboard
+
+A web dashboard to view the status of all utilities and their logs without needing to SSH into the Pi.
+
+**Configuration:**
+
+The configuration is stored at `/etc/rasppi-utils/status-dashboard/.env`
+
+Settings:
+- `PORT`: Port for the web server (default: `8080`)
+
+**Access:**
+
+Once enabled, access the dashboard at `http://<pi-ip>:8080` from any device on your local network.
+
+**Note:** This dashboard has no authentication and is intended for trusted local networks only. It is read-only and cannot modify system state.
+
 ## Troubleshooting
 
 ### View Service Logs
@@ -202,7 +220,7 @@ rasppi-utils/
 ├── sync.sh                   # Utility management
 ├── utilities.conf            # Which utilities are enabled
 ├── requirements.txt          # Python dependencies
-├── supabase-keepalive/       # Self-contained utility
+├── supabase-keepalive/       # Keeps Supabase projects active
 │   ├── scripts/
 │   │   └── keepalive.py
 │   ├── config/
@@ -210,6 +228,13 @@ rasppi-utils/
 │   └── systemd/
 │       ├── supabase-keepalive.service
 │       └── supabase-keepalive.timer
+├── status-dashboard/         # Web dashboard for monitoring
+│   ├── scripts/
+│   │   └── server.py
+│   ├── config/
+│   │   └── .env.example
+│   └── systemd/
+│       └── status-dashboard.service
 └── tests/
     └── supabase-keepalive/
         └── test_keepalive.py
