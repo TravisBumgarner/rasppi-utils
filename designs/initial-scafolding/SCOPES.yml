@@ -1,0 +1,92 @@
+project: initial-scafolding
+repo: travisbumgarner/rasppi-utils
+design_file: designs/initial-scafolding/DESIGN.md
+scoping_date: 2026-01-17
+
+milestones:
+  - number: 1
+    title: "1. Initial Scaffolding"
+    description: Set up project structure, Supabase keep-alive script, systemd integration, and bootstrap script
+    branch:
+      working: 1-initial-scaffolding
+      base: main
+
+tasks:
+  - id: 1
+    github_issue: 1
+    milestone: 1
+    title: Project setup with requirements.txt and config template
+    description: |
+      Set up the foundational project structure with Python dependencies and configuration template.
+
+      Create the directory structure (`scripts/`, `systemd/`, `config/`) and add:
+      - `requirements.txt` with supabase and python-dotenv
+      - `config/.env.example` with credential placeholders
+    acceptance_criteria:
+      - Create requirements.txt with supabase and python-dotenv dependencies
+      - Create config/.env.example with SUPABASE_URL and SUPABASE_KEY placeholders
+      - Create directory structure: scripts/, systemd/, config/
+    depends_on: []
+    effort: 1
+    status: completed
+
+  - id: 2
+    github_issue: 2
+    milestone: 1
+    title: Implement Supabase keep-alive script
+    description: |
+      Create a Python script that connects to Supabase using the official client
+      and executes a simple query to generate database activity, preventing
+      the free-tier project from being paused.
+
+      The script should:
+      - Load credentials from environment or .env file
+      - Connect using supabase-py create_client()
+      - Execute a simple query (e.g., RPC call or table query)
+      - Log results with timestamps
+      - Exit with appropriate codes for systemd
+    acceptance_criteria:
+      - Script loads SUPABASE_URL and SUPABASE_KEY from env or .env file
+      - Script connects to Supabase and executes a query to generate activity
+      - Script logs success/failure with timestamp
+      - Script exits 0 on success, non-zero on failure
+      - Unit tests with mocked Supabase client cover success and failure cases
+    depends_on: [1]
+    effort: 2
+    status: scoped
+
+  - id: 3
+    github_issue: 3
+    milestone: 1
+    title: Create systemd unit files for keep-alive timer
+    description: |
+      Create systemd service and timer unit files to run the Supabase
+      keep-alive script once daily on the Raspberry Pi.
+    acceptance_criteria:
+      - supabase-keepalive.service is Type=oneshot and runs the script with venv
+      - supabase-keepalive.timer triggers daily with Persistent=true
+      - Timer is configured with WantedBy=timers.target
+    depends_on: [2]
+    effort: 1
+    status: scoped
+
+  - id: 4
+    github_issue: 4
+    milestone: 1
+    title: Create bootstrap script for Raspberry Pi setup
+    description: |
+      Create the main bootstrap.sh script that sets up a new Raspberry Pi
+      with all utilities. This is the entry point users run to install
+      and configure everything.
+
+      The script should be idempotent (safe to run multiple times).
+    acceptance_criteria:
+      - Script installs system dependencies (python3, pip, venv)
+      - Script creates virtual environment and installs Python dependencies
+      - Script prompts for Supabase credentials and writes config
+      - Script copies systemd units to /etc/systemd/system/
+      - Script enables and starts the supabase-keepalive timer
+      - Script is idempotent
+    depends_on: [1, 2, 3]
+    effort: 2
+    status: scoped
