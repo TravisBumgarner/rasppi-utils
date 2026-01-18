@@ -110,6 +110,16 @@ prompt_for_config() {
         return 0
     fi
 
+    # Check if running interactively (stdin is a terminal)
+    if [[ ! -t 0 ]]; then
+        # Non-interactive: copy example and warn user
+        cp "$example_file" "$env_file"
+        chmod 600 "$env_file"
+        log_warn "Non-interactive mode: copied example config for ${utility}"
+        log_warn "Please edit ${env_file} with your credentials"
+        return 0
+    fi
+
     echo ""
     echo "=========================================="
     echo "  Configure: ${utility}"
