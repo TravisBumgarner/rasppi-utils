@@ -194,12 +194,29 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         }
         .utility-card:hover { transform: translateY(-2px); }
         .utility-card.selected { border: 2px solid #00d9ff; }
+        .utility-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
         .utility-name {
             font-size: 18px;
             font-weight: bold;
-            margin-bottom: 15px;
             color: #00d9ff;
         }
+        .run-btn {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .run-btn:hover { background: #45a049; }
+        .run-btn:disabled { background: #666; cursor: not-allowed; }
         .unit {
             display: flex;
             justify-content: space-between;
@@ -304,7 +321,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             container.innerHTML = utilities.map(u => `
                 <div class="utility-card ${selectedUtility === u.name ? 'selected' : ''}"
                      onclick="selectUtility('${u.name}')">
-                    <div class="utility-name">${u.name}</div>
+                    <div class="utility-header">
+                        <span class="utility-name">${u.name}</span>
+                        <button class="run-btn" onclick="runUtility(event, '${u.name}')">Run Now</button>
+                    </div>
                     ${u.services.map(s => `
                         <div class="unit">
                             <span class="unit-name">${s.name}</span>
@@ -325,6 +345,41 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                     `).join('')}
                 </div>
             `).join('');
+        }
+
+        async function runUtility(event, name) {
+            event.stopPropagation();
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Running...';
+
+            try {
+                const response = await fetch(`/api/run/${name}`, { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    btn.textContent = 'Started!';
+                    setTimeout(() => {
+                        refresh();
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                    }, 2000);
+                } else {
+                    btn.textContent = 'Failed';
+                    console.error('Run failed:', data.error);
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                    }, 2000);
+                }
+            } catch (error) {
+                console.error('Failed to run utility:', error);
+                btn.textContent = 'Error';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                }, 2000);
+            }
         }
 
         async function selectUtility(name) {
@@ -407,6 +462,36 @@ def api_logs(utility: str):
     if not all(c.isalnum() or c == "-" for c in utility):
         return jsonify({"error": "Invalid utility name"}), 400
     return jsonify(get_logs(utility))
+
+
+@app.route("/api/run/<utility>", methods=["POST"])
+def api_run(utility: str):
+    """Manually trigger a utility service to run."""
+    # Basic validation - only allow alphanumeric and hyphens
+    if not all(c.isalnum() or c == "-" for c in utility):
+        return jsonify({"error": "Invalid utility name"}), 400
+
+    # Verify utility is in the enabled list
+    enabled = get_enabled_utilities()
+    if utility not in enabled:
+        return jsonify({"error": "Utility not enabled"}), 400
+
+    service_name = f"{utility}.service"
+    try:
+        result = subprocess.run(
+            ["systemctl", "start", service_name],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            return jsonify({"success": True, "message": f"Started {service_name}"})
+        else:
+            return jsonify({
+                "success": False,
+                "error": result.stderr.strip() or "Failed to start service",
+            }), 500
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 def main():
