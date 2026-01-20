@@ -23,7 +23,7 @@ def load_config(env_path: str | None = None) -> dict[str, str]:
         env_path: Optional path to .env file. If None, uses environment variables.
 
     Returns:
-        Dictionary with 'url' and 'key' keys.
+        Dictionary with 'url', 'key', 'email', and 'password' keys.
 
     Raises:
         ValueError: If required credentials are missing.
@@ -33,31 +33,36 @@ def load_config(env_path: str | None = None) -> dict[str, str]:
 
     url = os.environ.get("SUPABASE_URL")
     key = os.environ.get("SUPABASE_KEY")
+    email = os.environ.get("SUPABASE_EMAIL")
+    password = os.environ.get("SUPABASE_PASSWORD")
 
     if not url:
         raise ValueError("SUPABASE_URL is not set")
     if not key:
         raise ValueError("SUPABASE_KEY is not set")
+    if not email:
+        raise ValueError("SUPABASE_EMAIL is not set")
+    if not password:
+        raise ValueError("SUPABASE_PASSWORD is not set")
 
-    return {"url": url, "key": key}
+    return {"url": url, "key": key, "email": email, "password": password}
 
 
-def ping_supabase(url: str, key: str) -> bool:
-    """Connect to Supabase and execute a simple query.
+def ping_supabase(url: str, key: str, email: str, password: str) -> bool:
+    """Connect to Supabase and sign in to generate activity.
 
     Args:
         url: Supabase project URL.
         key: Supabase API key.
+        email: User email for authentication.
+        password: User password for authentication.
 
     Returns:
         True if ping was successful, False otherwise.
     """
     try:
         client = create_client(url, key)
-        # Execute a simple query to generate activity
-        # Using a generic table query that will work even if table doesn't exist
-        # The goal is just to make a request to the database
-        client.table("_keepalive").select("*").limit(1).execute()
+        client.auth.sign_in_with_password({"email": email, "password": password})
         return True
     except Exception as e:
         logger.error(f"Failed to ping Supabase: {e}")
@@ -81,7 +86,7 @@ def main(env_path: str | None = None) -> int:
 
     timestamp = datetime.now().isoformat()
 
-    if ping_supabase(config["url"], config["key"]):
+    if ping_supabase(config["url"], config["key"], config["email"], config["password"]):
         logger.info(f"[{timestamp}] Supabase keep-alive ping successful")
         return 0
     else:
