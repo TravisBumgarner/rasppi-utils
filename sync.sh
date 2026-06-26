@@ -218,9 +218,11 @@ enable_utility() {
             # Only enable, don't start (timer will trigger it)
             systemctl enable "$service_name" 2>/dev/null || true
 
-            # If no timer exists, start the service
+            # If no timer exists, (re)start the service so a sync after a
+            # `git pull` actually picks up new code (plain start is a no-op on
+            # an already-running unit).
             if [[ ! -f "${systemd_src}/${timer_name}" ]]; then
-                systemctl start "$service_name" 2>/dev/null || true
+                systemctl restart "$service_name" 2>/dev/null || true
                 log_info "  Started ${service_name}"
             else
                 log_info "  Enabled ${service_name} (triggered by timer)"

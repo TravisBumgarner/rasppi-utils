@@ -6,6 +6,7 @@ import os
 import subprocess
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 from flask import Flask, jsonify
 
@@ -14,6 +15,33 @@ app = Flask(__name__)
 # Find the project root (parent of status-dashboard)
 SCRIPT_DIR = Path(__file__).parent.parent.parent
 UTILITIES_CONF = SCRIPT_DIR / "utilities.conf"
+CONFIG_DIR = Path("/etc/rasppi-utils")
+
+# Utilities that expose a web UI. The port is read from the utility's installed
+# .env (falling back to default_port); scheme is fixed per utility. Utilities
+# absent here (e.g. supabase-keepalive, or the dashboard itself) get no link.
+WEB_UIS = {
+    "social-poster": {"scheme": "http", "default_port": 5050},
+    "pixels64": {"scheme": "https", "default_port": 8443},
+}
+
+
+def get_web_ui(utility: str) -> Optional[dict]:
+    """Return {scheme, port} for a utility's web UI, or None if it has none."""
+    spec = WEB_UIS.get(utility)
+    if not spec:
+        return None
+    port = spec["default_port"]
+    env_file = CONFIG_DIR / utility / ".env"
+    if env_file.exists():
+        for line in env_file.read_text().splitlines():
+            line = line.strip()
+            if line.startswith("PORT="):
+                value = line.split("=", 1)[1].strip()
+                if value.isdigit():
+                    port = int(value)
+                break
+    return {"scheme": spec["scheme"], "port": port}
 
 
 def get_enabled_utilities() -> list[str]:
@@ -71,6 +99,7 @@ def get_utility_status(utility: str) -> dict:
     status = {
         "name": utility,
         "enabled": True,
+        "web": get_web_ui(utility),
         "services": [get_unit_status(service_name)],
         "timers": [],
     }
@@ -217,6 +246,19 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         }
         .run-btn:hover { background: #45a049; }
         .run-btn:disabled { background: #666; cursor: not-allowed; }
+        .card-actions { display: flex; gap: 8px; align-items: center; }
+        .open-btn {
+            background: #00d9ff;
+            color: #1a1a2e;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .open-btn:hover { background: #00b8d9; }
         .unit {
             display: flex;
             justify-content: space-between;
@@ -323,7 +365,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                      onclick="selectUtility('${u.name}')">
                     <div class="utility-header">
                         <span class="utility-name">${u.name}</span>
-                        <button class="run-btn" onclick="runUtility(event, '${u.name}')">Run Now</button>
+                        <div class="card-actions">
+                            ${u.web ? `<a class="open-btn" href="${u.web.scheme}://${location.hostname}:${u.web.port}/" target="_blank" rel="noopener" onclick="event.stopPropagation()">Open &#8599;</a>` : ''}
+                            <button class="run-btn" onclick="runUtility(event, '${u.name}')">Run Now</button>
+                        </div>
                     </div>
                     ${u.services.map(s => `
                         <div class="unit">
