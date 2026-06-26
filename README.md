@@ -56,6 +56,15 @@ Config lives at `/etc/rasppi-utils/<utility>/.env`.
 
 ## Updating
 
+From your laptop (pulls latest, refreshes the venv/cloudflared, runs `sync.sh`, and prompts for the social-poster tunnel token if unset):
+
+```bash
+./deploy.sh                       # defaults to motioncam@motioncam.local
+./deploy.sh pi@raspberrypi.local  # custom user@host
+```
+
+Or directly on the Pi:
+
 ```bash
 cd ~/rasppi-utils && git pull && sudo ./bootstrap-pi.sh
 ```
