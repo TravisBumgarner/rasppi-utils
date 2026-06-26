@@ -5,10 +5,11 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-# CLOUDFLARE_TUNNEL_TOKEN comes from the social-poster .env. Until it's set the
-# service just restart-loops harmlessly; Bluesky posting works without it.
-EnvironmentFile=/etc/rasppi-utils/social-poster/.env
-ExecStart=/usr/bin/cloudflared tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+# Runs the named tunnel defined in /etc/cloudflared/config.yml. That config and
+# its credentials are created by `social-poster/setup-cloudflare.sh` (one-time,
+# needs a browser authorization). Until then this restart-loops harmlessly;
+# Bluesky posting works without it.
+ExecStart=/usr/bin/cloudflared tunnel --no-autoupdate --config /etc/cloudflared/config.yml run
 Restart=always
 RestartSec=10
 

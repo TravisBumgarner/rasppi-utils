@@ -21,7 +21,6 @@ set -euo pipefail
 
 TARGET="${1:-motioncam@motioncam.local}"
 REPO_URL="${REPO_URL:-https://github.com/TravisBumgarner/rasppi-utils.git}"
-ENV_FILE="/etc/rasppi-utils/social-poster/.env"
 
 echo "==> Deploying to ${TARGET}"
 
@@ -60,68 +59,31 @@ echo "==> sync (install/enable systemd units from utilities.conf)"
 sudo ./sync.sh
 REMOTE
 
-# --- 5: Cloudflare Tunnel token (social-poster / Instagram) ------------------
+# --- 5: Cloudflare Tunnel (social-poster / Instagram) ------------------------
 echo
 echo "==> Cloudflare Tunnel (social-poster Instagram image hosting)"
 
-# Current token value on the Pi (empty if unset).
-current_token="$(ssh "${TARGET}" "sudo grep -E '^CLOUDFLARE_TUNNEL_TOKEN=' '${ENV_FILE}'" 2>/dev/null | cut -d= -f2- || true)"
-
-if [ -n "${current_token// /}" ]; then
-  echo "    Token already set — restarting tunnel."
-  ssh "${TARGET}" 'sudo systemctl restart social-poster-tunnel'
-else
-  cat <<'MSG'
-    No tunnel token set. One-time setup in the Cloudflare Zero Trust dashboard
-    (https://one.dash.cloudflare.com):
-      1. Networks -> Tunnels -> Create a tunnel -> Cloudflared, name it, and copy
-         the token from the shown `cloudflared ... run --token <TOKEN>` command.
-      2. Under the tunnel's Public Hostnames, add:
-           subdomain "poster", domain "travisbumgarner.photography",
-           service Type HTTP, URL localhost:5050.
-MSG
-  token=""
-  if { exec 3</dev/tty; } 2>/dev/null; then
-    printf "    Paste tunnel token (or press Enter to skip): "
-    read -rs token <&3 || token=""
-    exec 3<&-
-    echo
-  else
-    echo "    (no interactive terminal — skipping token prompt)"
-  fi
-  if [ -z "${token// /}" ]; then
-    echo "    Skipped — Bluesky still works. Re-run ./deploy.sh to set it later."
-  else
-    # Pipe the token over stdin (never on the command line) and write it on the Pi.
-    printf '%s' "$token" | ssh "${TARGET}" "ENV_FILE='${ENV_FILE}' bash -s" <<'REMOTE'
-set -euo pipefail
-TOKEN="$(cat)"
-sudo ENV_FILE="$ENV_FILE" python3 - "$TOKEN" <<'PY'
-import os, sys, pathlib
-token = sys.argv[1].strip()
-p = pathlib.Path(os.environ["ENV_FILE"])
-lines = p.read_text().splitlines()
-for i, ln in enumerate(lines):
-    if ln.startswith("CLOUDFLARE_TUNNEL_TOKEN="):
-        lines[i] = "CLOUDFLARE_TUNNEL_TOKEN=" + token
-        break
-else:
-    lines.append("CLOUDFLARE_TUNNEL_TOKEN=" + token)
-p.write_text("\n".join(lines) + "\n")
-PY
-sudo chmod 600 "$ENV_FILE"
-sudo systemctl restart social-poster-tunnel
-REMOTE
-    echo "    Token saved and tunnel restarted."
-  fi
-fi
-
-# Verify tunnel state (give cloudflared a few seconds to connect).
-sleep 4
 tunnel_state="$(ssh "${TARGET}" 'systemctl is-active social-poster-tunnel' 2>/dev/null || true)"
-echo "    social-poster-tunnel: ${tunnel_state}"
-if [ "${tunnel_state}" != "active" ] && [ -n "${current_token// /}${token:-}" ]; then
-  echo "    Not connected yet — inspect: ssh ${TARGET} 'journalctl -u social-poster-tunnel -n 30 --no-pager'"
+configured="$(ssh "${TARGET}" 'test -f /etc/cloudflared/config.yml && echo yes || echo no')"
+
+if [ "${configured}" = "yes" ]; then
+  ssh "${TARGET}" 'sudo systemctl restart social-poster-tunnel' || true
+  sleep 4
+  tunnel_state="$(ssh "${TARGET}" 'systemctl is-active social-poster-tunnel' 2>/dev/null || true)"
+  echo "    Configured. social-poster-tunnel: ${tunnel_state}"
+  if [ "${tunnel_state}" != "active" ]; then
+    echo "    Not connected — inspect: ssh ${TARGET} 'journalctl -u social-poster-tunnel -n 30 --no-pager'"
+  fi
+else
+  cat <<MSG
+    Instagram needs a public URL via a Cloudflare Tunnel, which isn't set up yet.
+    It's a one-time step (needs a browser authorization for your domain). Run:
+
+      ssh ${TARGET}
+      ~/rasppi-utils/social-poster/setup-cloudflare.sh
+
+    Bluesky posting works without it.
+MSG
 fi
 
 # --- 6: final status --------------------------------------------------------

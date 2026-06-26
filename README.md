@@ -52,7 +52,7 @@ Config lives at `/etc/rasppi-utils/<utility>/.env`.
 | `supabase-keepalive` | `SUPABASE_URL`, `SUPABASE_KEY` (Supabase Dashboard → Settings → API). Runs daily via systemd timer. |
 | `status-dashboard` | `PORT` (default `80`). Access at `http://rasppi-utils.local`. No auth — trusted networks only. |
 | `pixels64` | `PORT` (default `8443`). Access at `https://rasppi-utils.local:8443` in Chrome/Edge. HTTPS with a self-signed cert (one-time browser warning) — required for Web Bluetooth. The page connects to your ESP32 boards directly over Bluetooth. |
-| `social-poster` | `PORT` (default `5050`), `PUBLIC_BASE_URL`, `CLOUDFLARE_TUNNEL_TOKEN` (Instagram only — see [setup](#social-poster-frontend)). Access at `http://rasppi-utils.local:5050`. Upload an image, pick accounts, schedule on a calendar; a per-minute timer publishes due posts. Add Instagram (user ID + long-lived access token, Graph API) and Bluesky (handle + app password) accounts in the UI. Data in `/var/lib/rasppi-utils/social-poster`. Instagram needs a public image URL, so a Cloudflare Tunnel (`social-poster-tunnel` service) exposes this app; Bluesky works without it. |
+| `social-poster` | `PORT` (default `5050`), `PUBLIC_BASE_URL` (Instagram tunnel — see [setup](#social-poster-frontend)). Access at `http://rasppi-utils.local:5050`. Upload an image, pick accounts, schedule on a calendar; a per-minute timer publishes due posts. Add Instagram (user ID + long-lived access token, Graph API) and Bluesky (handle + app password) accounts in the UI. Data in `/var/lib/rasppi-utils/social-poster`. Instagram needs a public image URL, so a Cloudflare Tunnel (`social-poster-tunnel` service) exposes this app; Bluesky works without it. |
 
 ## Updating
 
@@ -109,10 +109,13 @@ A pre-commit hook (`.githooks/pre-commit`) rebuilds `web/dist/` automatically wh
 
 ### Instagram tunnel (production)
 
-Instagram's Graph API fetches each photo from a public URL, so the Pi must be reachable from the internet. We use a Cloudflare Tunnel (no open ports) run by the `social-poster-tunnel` systemd service. One-time setup:
+Instagram's Graph API fetches each photo from a public URL, so the Pi must be reachable from the internet. We use a named Cloudflare Tunnel (no open ports) run by the `social-poster-tunnel` systemd service. One-time setup, run on the Pi:
 
-1. In the [Cloudflare Zero Trust dashboard](https://one.dash.cloudflare.com): **Networks → Tunnels → Create a tunnel → Cloudflared**, name it, and copy the token from the `cloudflared ... run --token <TOKEN>` command it shows.
-2. Under that tunnel's **Public Hostnames**, add: subdomain `poster`, domain `travisbumgarner.photography`, service **HTTP** → `localhost:5050`.
-3. Put the token in `/etc/rasppi-utils/social-poster/.env` as `CLOUDFLARE_TUNNEL_TOKEN=...` (and keep `PUBLIC_BASE_URL=https://poster.travisbumgarner.photography`), then `sudo ./sync.sh`.
+```bash
+ssh motioncam@motioncam.local
+~/rasppi-utils/social-poster/setup-cloudflare.sh
+```
+
+It opens a browser URL to authorize your domain once, then creates the tunnel, **auto-creates the DNS record**, writes `/etc/cloudflared/config.yml`, and starts the service. Override defaults with env vars if needed: `TUNNEL_NAME`, `HOSTNAME_FQDN`, `LOCAL_URL`.
 
 Bluesky posting works without any of this; only Instagram needs the tunnel. Set `DRY_RUN=1` to exercise the UI/scheduler without sending real posts.

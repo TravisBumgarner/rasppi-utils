@@ -12,6 +12,7 @@ import {
 import { useSettings } from '../hooks/useSettings';
 import {
   apiISOToDatetimeLocal,
+  dateToDatetimeLocal,
   datetimeLocalToApiISO,
   formatHHMM,
 } from '../utils/datetime';
@@ -105,7 +106,10 @@ export function PostModal({ onClose, post, initialScheduledAt }: PostModalProps)
     defaultValues: {
       scheduled_at: post
         ? apiISOToDatetimeLocal(post.scheduled_at)
-        : initialScheduledAt ?? '',
+        : initialScheduledAt ??
+          // Default a new post to an hour out so it's valid immediately, rather
+          // than defaulting to "now" (which fails the must-be-future check).
+          dateToDatetimeLocal(new Date(Date.now() + 60 * 60 * 1000)),
       account_ids: post ? post.targets.map((t) => t.account_id) : [],
       captionInstagram: post?.captions.instagram ?? '',
       captionBluesky: post?.captions.bluesky ?? '',
@@ -167,6 +171,15 @@ export function PostModal({ onClose, post, initialScheduledAt }: PostModalProps)
       ? [...selectedIds, id]
       : selectedIds.filter((existing) => existing !== id);
     setValue('account_ids', next, { shouldValidate: true });
+  };
+
+  const allSelected =
+    (accounts?.length ?? 0) > 0 && selectedIds.length === accounts!.length;
+
+  const toggleAllAccounts = () => {
+    setValue('account_ids', allSelected ? [] : (accounts ?? []).map((a) => a.id), {
+      shouldValidate: true,
+    });
   };
 
   const buildCaptions = (values: FormValues): Captions => {
@@ -271,7 +284,18 @@ export function PostModal({ onClose, post, initialScheduledAt }: PostModalProps)
             {/* RIGHT: scrollable metadata */}
             <div className="post-modal-meta">
               <div className="field">
-                <span className="field-label">Accounts *</span>
+                <div className="field-label-row">
+                  <span className="field-label">Accounts *</span>
+                  {(accounts?.length ?? 0) > 0 && (
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={toggleAllAccounts}
+                    >
+                      {allSelected ? 'Clear' : 'Select all'}
+                    </button>
+                  )}
+                </div>
                 {accountsLoading && <span className="muted">Loading…</span>}
                 {!accountsLoading && (accounts?.length ?? 0) === 0 && (
                   <span className="muted">
@@ -356,6 +380,16 @@ export function PostModal({ onClose, post, initialScheduledAt }: PostModalProps)
                     {errors.scheduled_at.message}
                   </span>
                 )}
+                {/* Explain a disabled submit immediately, before any submit
+                    attempt, so a past/now time isn't "blocked for no reason". */}
+                {!errors.scheduled_at &&
+                  !isEdit &&
+                  Boolean(scheduledAt) &&
+                  new Date(scheduledAt).getTime() <= Date.now() && (
+                    <span className="field-error">
+                      Scheduled time must be in the future — pick a later time.
+                    </span>
+                  )}
               </div>
             </div>
           </div>

@@ -911,6 +911,14 @@ body {
   color: var(--text-dim);
 }
 
+/* Label with a trailing action (e.g. Accounts + Select all). */
+.field-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .field-help {
   font-size: 12px;
   color: var(--muted);
