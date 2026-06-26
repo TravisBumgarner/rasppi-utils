@@ -1,0 +1,16 @@
+[Unit]
+Description=Social Poster - schedule posts to Instagram/Bluesky (web UI)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory={{INSTALL_DIR}}/social-poster
+EnvironmentFile=/etc/rasppi-utils/social-poster/.env
+Environment=DATA_DIR=/var/lib/rasppi-utils/social-poster
+ExecStart={{INSTALL_DIR}}/.venv/bin/python {{INSTALL_DIR}}/social-poster/scripts/server.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

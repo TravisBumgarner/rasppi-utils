@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pixels64 BLE</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+body{margin:0;background:#111;color:#eee;font-family:-apple-system,sans-serif;padding:14px;user-select:none;-webkit-user-select:none}
+h1{margin:0 0 12px;font-size:16px;letter-spacing:2px;text-align:center}
+#topbar{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;max-width:900px;margin:0 auto 14px;padding:8px;background:#181818;border:1px solid #2a2a2a;border-radius:8px}
+#topbar.empty{justify-content:center}
+#topbar .empty-hint{font-size:12px;color:#888;margin-right:6px}
+.chip{display:inline-flex;align-items:center;gap:4px;background:#222;border:1px solid #3a3a3a;border-radius:14px;padding:4px 8px 4px 10px;font-size:12px}
+.chip .dot{width:7px;height:7px;border-radius:50%;background:#4a8a5a}
+.chip .x{cursor:pointer;color:#888;padding:0 2px;font-size:14px;line-height:1;margin-left:2px}
+.chip .x:hover{color:#e66}
+#add{background:#2a5a3a;border:1px solid #4a8a5a;color:#eee;border-radius:14px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit}
+#conn-err{color:#e66;text-align:center;font-size:12px;min-height:14px;margin-top:6px}
+.layout{display:flex;gap:18px;justify-content:center;align-items:flex-start;max-width:900px;margin:0 auto}
+.left{display:flex;flex-direction:column;gap:5px;width:170px;flex-shrink:0}
+#preset-buttons{display:flex;flex-direction:column;gap:5px}
+#preset-buttons button{width:100%;box-sizing:border-box}
+.left>button{width:100%;box-sizing:border-box}
+.left .hdr{font-size:11px;color:#666;letter-spacing:1px;margin:6px 0 2px;text-transform:uppercase}
+.right{display:flex;flex-direction:column;align-items:center;gap:14px;flex:1;min-width:0}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
+.slider-row{display:flex;gap:8px;align-items:center}
+.slider-row input[type=range]{flex:1}
+button{padding:8px 12px;background:#222;color:#eee;border:1px solid #444;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;text-align:left}
+button:active{background:#333}
+button.active{background:#2a5a3a;border-color:#4a8a5a}
+button:disabled,#grid.disabled .cell{opacity:0.4;cursor:not-allowed}
+input[type=color]{width:44px;height:36px;border:1px solid #444;background:#222;border-radius:6px;cursor:pointer;padding:0}
+#grid{display:grid;grid-template-columns:repeat(8,38px);grid-template-rows:repeat(8,38px);gap:3px;background:#000;padding:6px;border-radius:8px;touch-action:none}
+.cell{background:#000;border:1px solid #222;border-radius:4px;cursor:pointer}
+#status{font-size:12px;color:#888;min-height:16px;text-align:center}
+@media(max-width:720px){.layout{flex-direction:column;align-items:center}.left{width:100%;max-width:320px}}
+</style>
+</head>
+<body>
+
+<h1>PIXELS64 BLE</h1>
+
+<div id="topbar" class="empty">
+  <span class="empty-hint">No devices connected.</span>
+  <button id="add">+ Add device</button>
+</div>
+<div id="conn-err"></div>
+
+<div class="layout">
+  <div class="left">
+    <div class="hdr">Presets</div>
+    <div id="preset-buttons"></div>
+    <button id="stop">Stop</button>
+  </div>
+  <div class="right">
+    <div class="row">
+      <input type="color" id="pick" value="#ff3030">
+      <button id="clr">Clear</button>
+      <button id="fil">Fill</button>
+    </div>
+    <div class="slider-row" style="width:100%;max-width:340px">
+      <span style="font-size:12px;color:#aaa;min-width:54px">FPS <span id="fps-val">8</span></span>
+      <input type="range" id="fps" min="1" max="30" step="1" value="8">
+    </div>
+    <div class="slider-row" style="width:100%;max-width:340px">
+      <span style="font-size:12px;color:#aaa;min-width:54px">Bri <span id="bri-val">1.00</span></span>
+      <input type="range" id="bri" min="0" max="1" step="0.05" value="1">
+    </div>
+    <div id="grid"></div>
+    <div id="status"></div>
+  </div>
+</div>
+
+<script>
+const SVC_UUID = "f64a0001-7e1e-4f0a-9b2d-1c3a5a8d2e10";
+const CMD_UUID = "f64a0002-7e1e-4f0a-9b2d-1c3a5a8d2e10";
+
+const OP_SET_PIXEL  = 0x01;
+const OP_FILL       = 0x02;
+const OP_CLEAR      = 0x03;
+const OP_PRESET     = 0x05;
+const OP_BRIGHTNESS = 0x06;
+const OP_BATCH      = 0x07;
+const OP_STOP       = 0x08;
+const OP_FPS        = 0x09;
+
+const PRESET_ORDER = [
+  "off",
+  "rainbow","chase","pulse","sparkle","plasma",
+  "christmas","gradient_squares","random_pulses","pulses_toward",
+  "zigzag","dual_chase","hilbert","morton","spiral",
+  "jpeg_zigzag","diagonal_wave","voronoi",
+];
+
+const devices = []; // {device, char, name}
+let pendingMap = new Map();
+let inflight = false;
+let activeName = "off";
+
+const topbar = document.getElementById('topbar');
+const grid = document.getElementById('grid');
+const pick = document.getElementById('pick');
+const status = document.getElementById('status');
+const presetWrap = document.getElementById('preset-buttons');
+const errEl = document.getElementById('conn-err');
+
+function updateUiState(){
+  const hasDevices = devices.length > 0;
+  document.querySelectorAll('button:not(#add):not(.x)').forEach(b => b.disabled = !hasDevices);
+  grid.classList.toggle('disabled', !hasDevices);
+  if(hasDevices){
+    status.textContent = devices.length + ' device' + (devices.length===1?'':'s') + ' connected';
+  }else{
+    status.textContent = '';
+  }
+}
+
+function renderTopbar(){
+  topbar.innerHTML = '';
+  if(devices.length === 0){
+    topbar.classList.add('empty');
+    const hint = document.createElement('span');
+    hint.className = 'empty-hint';
+    hint.textContent = 'No devices connected.';
+    topbar.appendChild(hint);
+  }else{
+    topbar.classList.remove('empty');
+    devices.forEach(d => {
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      const dot = document.createElement('span'); dot.className='dot'; chip.appendChild(dot);
+      const name = document.createElement('span'); name.textContent = d.name; chip.appendChild(name);
+      const x = document.createElement('span'); x.className='x'; x.textContent='×';
+      x.title = 'Disconnect';
+      x.onclick = () => disconnectDevice(d);
+      chip.appendChild(x);
+      topbar.appendChild(chip);
+    });
+  }
+  const addBtn = document.createElement('button');
+  addBtn.id = 'add';
+  addBtn.textContent = '+ Add device';
+  addBtn.onclick = addDevice;
+  topbar.appendChild(addBtn);
+  updateUiState();
+}
+
+async function addDevice(){
+  errEl.textContent = '';
+  if(!navigator.bluetooth){
+    errEl.textContent = 'Web Bluetooth not available in this browser.';
+    return;
+  }
+  try{
+    const dev = await navigator.bluetooth.requestDevice({
+      filters: [{namePrefix: 'Pixels64'}],
+      optionalServices: [SVC_UUID],
+    });
+    if(devices.some(d => d.device === dev)){
+      errEl.textContent = 'Already connected.';
+      return;
+    }
+    const server = await dev.gatt.connect();
+    const svc = await server.getPrimaryService(SVC_UUID);
+    const char = await svc.getCharacteristic(CMD_UUID);
+    const entry = {device: dev, char, name: dev.name || 'Pixels64'};
+    dev.addEventListener('gattserverdisconnected', () => removeDeviceEntry(entry));
+    devices.push(entry);
+    renderTopbar();
+  }catch(e){
+    errEl.textContent = String(e);
+  }
+}
+
+function removeDeviceEntry(entry){
+  const i = devices.indexOf(entry);
+  if(i >= 0) devices.splice(i, 1);
+  renderTopbar();
+}
+
+function disconnectDevice(entry){
+  try{ if(entry.device.gatt.connected) entry.device.gatt.disconnect(); }catch(e){}
+  removeDeviceEntry(entry);
+}
+
+async function bleSendAll(bytes){
+  if(devices.length === 0) return;
+  const ua = new Uint8Array(bytes);
+  await Promise.all(devices.map(d =>
+    d.char.writeValueWithoutResponse(ua).catch(e => console.warn(d.name, e))
+  ));
+}
+
+function hex2rgb(h){return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]}
+
+async function flushPaint(){
+  if(inflight || pendingMap.size === 0 || devices.length === 0) return;
+  inflight = true;
+  while(pendingMap.size > 0){
+    const chunk = [];
+    const iter = pendingMap.entries();
+    while(chunk.length < 8){
+      const n = iter.next();
+      if(n.done) break;
+      chunk.push(n.value);
+      pendingMap.delete(n.value[0]);
+    }
+    const buf = [OP_BATCH, chunk.length];
+    for(const [idx,c] of chunk){buf.push(idx,c[0],c[1],c[2])}
+    await bleSendAll(buf);
+  }
+  inflight = false;
+}
+
+let down = false;
+function paint(idx, cell){
+  if(devices.length === 0) return;
+  const h = pick.value; const [r,g,b] = hex2rgb(h);
+  cell.style.background = h;
+  pendingMap.set(idx, [r,g,b]);
+  flushPaint();
+}
+function cellAt(x,y){const el=document.elementFromPoint(x,y);return (el&&el.classList.contains('cell'))?el:null}
+
+for(let i=0;i<64;i++){
+  const c=document.createElement('div');
+  c.className='cell';c.dataset.idx=i;
+  c.addEventListener('mousedown',e=>{down=true;paint(i,c);e.preventDefault()});
+  c.addEventListener('mouseenter',()=>{if(down)paint(i,c)});
+  grid.appendChild(c);
+}
+document.addEventListener('mouseup',()=>down=false);
+document.addEventListener('mouseleave',()=>down=false);
+grid.addEventListener('touchstart',e=>{const t=e.touches[0];const c=cellAt(t.clientX,t.clientY);if(c)paint(+c.dataset.idx,c);e.preventDefault()},{passive:false});
+grid.addEventListener('touchmove',e=>{const t=e.touches[0];const c=cellAt(t.clientX,t.clientY);if(c)paint(+c.dataset.idx,c);e.preventDefault()},{passive:false});
+
+function buildPresets(){
+  presetWrap.innerHTML = '';
+  PRESET_ORDER.slice(1).forEach((n, i) => {
+    const b = document.createElement('button');
+    b.textContent = n; b.dataset.name = n;
+    b.onclick = async () => {
+      activeName = n;
+      markActive(n);
+      await bleSendAll([OP_PRESET, i + 1]);
+    };
+    presetWrap.appendChild(b);
+  });
+}
+function markActive(name){
+  document.querySelectorAll('#preset-buttons button').forEach(b => {
+    b.classList.toggle('active', b.dataset.name === name);
+  });
+}
+
+document.getElementById('clr').onclick = async () => {
+  await bleSendAll([OP_CLEAR]);
+  document.querySelectorAll('.cell').forEach(c => c.style.background = '#000');
+  activeName = "off"; markActive("off");
+};
+document.getElementById('fil').onclick = async () => {
+  const h = pick.value; const [r,g,b] = hex2rgb(h);
+  await bleSendAll([OP_FILL, r, g, b]);
+  document.querySelectorAll('.cell').forEach(c => c.style.background = h);
+  activeName = "off"; markActive("off");
+};
+document.getElementById('stop').onclick = async () => {
+  await bleSendAll([OP_STOP]);
+  activeName = "off"; markActive("off");
+};
+
+const fpsSlider = document.getElementById('fps');
+const fpsVal = document.getElementById('fps-val');
+const savedFps = localStorage.getItem('fps');
+if (savedFps !== null) fpsSlider.value = savedFps;
+fpsVal.textContent = fpsSlider.value;
+fpsSlider.addEventListener('input', () => fpsVal.textContent = fpsSlider.value);
+fpsSlider.addEventListener('change', () => {
+  localStorage.setItem('fps', fpsSlider.value);
+  bleSendAll([OP_FPS, parseInt(fpsSlider.value)]);
+});
+
+const briSlider = document.getElementById('bri');
+const briVal = document.getElementById('bri-val');
+function fmtBri(v){return Number(v).toFixed(2)}
+const savedBri = localStorage.getItem('bri');
+if (savedBri !== null) briSlider.value = savedBri;
+briVal.textContent = fmtBri(briSlider.value);
+briSlider.addEventListener('input', () => briVal.textContent = fmtBri(briSlider.value));
+briSlider.addEventListener('change', () => {
+  localStorage.setItem('bri', briSlider.value);
+  const v = Math.round(parseFloat(briSlider.value) * 255);
+  bleSendAll([OP_BRIGHTNESS, v]);
+});
+
+buildPresets();
+renderTopbar();
+</script>
+</body>
+</html>

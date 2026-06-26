@@ -1,0 +1,11 @@
+# Dev environment config (real tokens) — never commit.
+config/.env
+
+# Dev data: local SQLite DB and uploaded images. Prod stores these under
+# /var/lib/rasppi-utils/social-poster via DATA_DIR.
+data/
+
+# Python
+__pycache__/
+*.pyc
+.venv/

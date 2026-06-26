@@ -1,0 +1,147 @@
+#!/usr/bin/env python3
+"""Social Poster - SQLite schema and database helpers.
+
+Defines the on-disk locations for the database and uploaded images,
+exposes a connection helper that is safe to use across threads (one
+connection per operation), and the canonical UTC timestamp helper used
+by both the web server and the publisher so their formats match exactly.
+"""
+
+import os
+import sqlite3
+from datetime import datetime, timezone
+from pathlib import Path
+
+# Compute the repo root relative to this file:
+#   <repo>/social-poster/scripts/db.py -> <repo>
+REPO_ROOT = Path(__file__).parent.parent.parent
+
+# DATA_DIR may be overridden by systemd to an absolute path. The default is a
+# dev-friendly location inside the repo.
+DATA_DIR = Path(os.environ.get("DATA_DIR", REPO_ROOT / "social-poster" / "data"))
+
+DB_PATH = DATA_DIR / "social-poster.db"
+IMAGES_DIR = DATA_DIR / "images"
+
+# The exact timestamp format used everywhere. Zero-padded UTC with a literal
+# "Z" suffix so that lexicographic string comparison equals chronological
+# comparison.
+UTC_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+
+
+def utc_now_iso() -> str:
+    """Return the current UTC time as an ISO-8601 string (e.g. 2026-06-25T12:34:56Z).
+
+    Used by both the server and the publisher so stored timestamps and
+    comparison values always share the exact same format.
+    """
+    return datetime.now(timezone.utc).strftime(UTC_FORMAT)
+
+
+def ensure_dirs() -> None:
+    """Create the data and images directories if they do not exist."""
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def get_connection() -> sqlite3.Connection:
+    """Open a new SQLite connection with sensible defaults.
+
+    A fresh connection is opened per request/operation, which keeps SQLite
+    usage simple and correct across Flask's threaded request handling.
+    Foreign keys are enforced and rows are returned as ``sqlite3.Row``.
+    """
+    ensure_dirs()
+    conn = sqlite3.connect(str(DB_PATH))
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    # The web server and the in-process publisher thread both write, so wait
+    # briefly for a lock instead of failing immediately with "database is locked".
+    conn.execute("PRAGMA busy_timeout = 5000")
+    return conn
+
+
+def _table_columns(conn: sqlite3.Connection, table: str) -> set:
+    """Return the set of column names on an existing table."""
+    return {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+
+
+def init_db() -> None:
+    """Create the database tables if they do not already exist.
+
+    Captions live on ``post_targets`` (not ``posts``) so the same image can go
+    out with a different caption per platform — @-mentions differ between
+    Instagram and Bluesky. Databases created before that change are migrated in
+    place below.
+    """
+    conn = get_connection()
+    try:
+        conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS accounts (
+                id INTEGER PRIMARY KEY,
+                platform TEXT NOT NULL,
+                username TEXT NOT NULL,
+                display_name TEXT,
+                credentials TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS posts (
+                id INTEGER PRIMARY KEY,
+                image_filename TEXT NOT NULL,
+                caption TEXT NOT NULL DEFAULT '',
+                scheduled_at TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS post_targets (
+                id INTEGER PRIMARY KEY,
+                post_id INTEGER NOT NULL,
+                account_id INTEGER NOT NULL,
+                caption TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'scheduled',
+                error TEXT,
+                posted_at TEXT,
+                FOREIGN KEY(post_id) REFERENCES posts(id) ON DELETE CASCADE,
+                FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE
+            );
+
+            -- Simple key/value app settings (values are JSON strings).
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );
+
+            -- Append-only record of every publish attempt (one row per target
+            -- per try). Denormalized and FK-free so entries persist even after
+            -- the post or account is deleted — it's an audit log.
+            CREATE TABLE IF NOT EXISTS publish_log (
+                id INTEGER PRIMARY KEY,
+                post_id INTEGER,
+                target_id INTEGER,
+                platform TEXT NOT NULL,
+                username TEXT NOT NULL,
+                status TEXT NOT NULL,
+                error TEXT,
+                image_filename TEXT,
+                caption TEXT,
+                attempted_at TEXT NOT NULL
+            );
+            """
+        )
+
+        # Migrate pre-per-target-caption databases: add the column and backfill
+        # each target from its post's (now legacy) caption.
+        if "caption" not in _table_columns(conn, "post_targets"):
+            conn.execute(
+                "ALTER TABLE post_targets ADD COLUMN caption TEXT NOT NULL DEFAULT ''"
+            )
+            conn.execute(
+                "UPDATE post_targets SET caption = "
+                "(SELECT caption FROM posts WHERE posts.id = post_targets.post_id)"
+            )
+
+        conn.commit()
+    finally:
+        conn.close()

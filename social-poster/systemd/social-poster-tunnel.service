@@ -1,0 +1,16 @@
+[Unit]
+Description=Cloudflare Tunnel for social-poster (public image URLs so Instagram can fetch uploads)
+After=network-online.target social-poster.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# CLOUDFLARE_TUNNEL_TOKEN comes from the social-poster .env. Until it's set the
+# service just restart-loops harmlessly; Bluesky posting works without it.
+EnvironmentFile=/etc/rasppi-utils/social-poster/.env
+ExecStart=/usr/bin/cloudflared tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

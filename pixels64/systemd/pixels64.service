@@ -1,0 +1,15 @@
+[Unit]
+Description=Pixels64 - Web Bluetooth control UI for the Pixels64 display
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory={{INSTALL_DIR}}/pixels64
+ExecStart={{INSTALL_DIR}}/.venv/bin/python {{INSTALL_DIR}}/pixels64/scripts/server.py
+EnvironmentFile=/etc/rasppi-utils/pixels64/.env
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

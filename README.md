@@ -1,262 +1,109 @@
 # rasppi-utils
 
-A collection of utilities for Raspberry Pi, designed with a modular architecture where each utility is self-contained and can be independently enabled or disabled.
+A modular collection of background utilities for a Raspberry Pi. Each utility is self-contained and can be enabled/disabled independently.
 
-## Overview
+- **supabase-keepalive** — daily API call to keep a Supabase free-tier project from pausing.
+- **status-dashboard** — read-only web page showing utility status and logs.
+- **pixels64** — hosts the Web Bluetooth UI for controlling the Pixels64 LED display.
+- **social-poster** — schedule image posts to Instagram/Bluesky from a calendar/queue web app.
 
-This repository provides automated scripts that run on a Raspberry Pi to perform various background tasks. Currently includes:
+## Setup
 
-- **supabase-keepalive**: Prevents Supabase free-tier projects from pausing due to inactivity by making daily API calls
-- **status-dashboard**: Web interface to view utility status and logs from your browser
+### On the Pi
 
-## Prerequisites
-
-- Raspberry Pi with Raspberry Pi OS (or other Debian-based OS)
-- Internet connection
-- GitHub account with access to this private repository
-
-## Installation
-
-### Step 1: Prepare Your Raspberry Pi
-
-Ensure your Pi is up to date:
+SSH in (or use a keyboard/monitor), clone the repo, and run the Pi bootstrap:
 
 ```bash
-sudo apt update && sudo apt full-upgrade -y
+git clone git@github.com:travisbumgarner/rasppi-utils.git ~/rasppi-utils
+cd ~/rasppi-utils
+sudo ./bootstrap-pi.sh
 ```
 
-### Step 2: Set Up SSH Key for GitHub
+`bootstrap-pi.sh` sets the hostname to `rasppi-utils`, creates a `rasppi-utils` user (password `rasppi-utils`), installs dependencies, and configures enabled utilities. You'll be prompted for any missing utility config.
 
-Since this is a private repository, you need an SSH key to clone it.
+> Private repo — you need an SSH key on the Pi added to GitHub. See [GitHub's guide](https://docs.github.com/en/authentication/connecting-to-github-with-ssh).
 
-**Generate an SSH key:**
+### From your laptop
+
+Once the Pi is bootstrapped, connect with:
 
 ```bash
-ssh-keygen -t ed25519 -C "raspberrypi"
+./bootstrap-client.sh
 ```
 
-Press Enter to accept the default location and optionally set a passphrase.
+This SSHes into `rasppi-utils@rasppi-utils.local`. If `.local` doesn't resolve, it falls back to [`find-pi.sh`](find-pi.sh) to locate the Pi by IP.
 
-**Display your public key:**
+## Managing utilities
 
-```bash
-cat ~/.ssh/id_ed25519.pub
-```
-
-**Add the key to GitHub:**
-
-1. Go to [GitHub SSH Keys Settings](https://github.com/settings/keys)
-2. Click "New SSH key"
-3. Give it a title (e.g., "Raspberry Pi")
-4. Paste your public key
-5. Click "Add SSH key"
-
-**Test the connection:**
-
-```bash
-ssh -T git@github.com
-```
-
-You should see: "Hi username! You've successfully authenticated..."
-
-### Step 3: Clone and Bootstrap
-
-```bash
-cd ~
-git clone git@github.com:travisbumgarner/rasppi-utils.git
-cd rasppi-utils
-sudo ./bootstrap.sh
-```
-
-The bootstrap script will:
-- Install system dependencies (python3, pip, venv)
-- Set up the Python virtual environment
-- Install Python dependencies
-- Create the configuration directory at `/etc/rasppi-utils/`
-- Run `sync.sh` to configure enabled utilities
-
-The repository can be cloned to any location - the scripts use their own directory as the installation path.
-
-During the sync process, you'll be prompted to configure any enabled utilities that don't have configuration yet.
-
-## Managing Utilities
-
-### Enable/Disable Utilities
-
-Edit `utilities.conf` to control which utilities are active:
+Enabled utilities are listed in [`utilities.conf`](utilities.conf), one per line (comment out to disable):
 
 ```bash
 sudo nano ~/rasppi-utils/utilities.conf
+sudo ~/rasppi-utils/sync.sh           # apply changes
+sudo ~/rasppi-utils/sync.sh --status  # check status
 ```
 
-```
-# Enabled utilities (one per line)
-# Comment out or remove a line to disable that utility
+## Configuration
 
-supabase-keepalive
-# future-utility
-```
+Config lives at `/etc/rasppi-utils/<utility>/.env`.
 
-After editing, apply changes:
-
-```bash
-sudo ~/rasppi-utils/sync.sh
-```
-
-### Check Utility Status
-
-View the status of all utilities and their systemd services:
-
-```bash
-sudo ~/rasppi-utils/sync.sh --status
-```
-
-## Utility Configuration
-
-### supabase-keepalive
-
-Prevents Supabase free-tier projects from pausing by making a daily API call.
-
-**Configuration:**
-
-The configuration is stored at `/etc/rasppi-utils/supabase-keepalive/.env`
-
-Required settings:
-- `SUPABASE_URL`: Your Supabase project URL (e.g., `https://your-project.supabase.co`)
-- `SUPABASE_KEY`: Your Supabase anon/public key
-
-**Get your credentials:**
-
-1. Go to your [Supabase Dashboard](https://app.supabase.com/)
-2. Select your project
-3. Go to Settings > API
-4. Copy the "Project URL" and "anon public" key
-
-**Schedule:**
-
-Runs daily via systemd timer with a randomized delay of up to 1 hour.
-
-### status-dashboard
-
-A web dashboard to view the status of all utilities and their logs without needing to SSH into the Pi.
-
-**Configuration:**
-
-The configuration is stored at `/etc/rasppi-utils/status-dashboard/.env`
-
-Settings:
-- `PORT`: Port for the web server (default: `8080`)
-
-**Access:**
-
-Once enabled, access the dashboard at `http://<pi-ip>:8080` from any device on your local network.
-
-**Note:** This dashboard has no authentication and is intended for trusted local networks only. It is read-only and cannot modify system state.
-
-## Troubleshooting
-
-### View Service Logs
-
-```bash
-# View recent logs for a specific service
-sudo journalctl -u supabase-keepalive.service -n 50
-
-# Follow logs in real-time
-sudo journalctl -u supabase-keepalive.service -f
-
-# View timer status
-sudo systemctl status supabase-keepalive.timer
-```
-
-### Manually Run a Utility
-
-```bash
-# Run the keepalive script manually
-sudo ~/rasppi-utils/.venv/bin/python ~/rasppi-utils/supabase-keepalive/scripts/keepalive.py
-```
-
-### Check Timer Schedule
-
-```bash
-# List all timers and when they'll run next
-sudo systemctl list-timers
-
-# Check specific timer
-sudo systemctl status supabase-keepalive.timer
-```
-
-### Common Issues
-
-**Service fails to start:**
-- Check the logs with `journalctl`
-- Verify configuration exists at `/etc/rasppi-utils/<utility>/.env`
-- Ensure the virtual environment is set up: `~/rasppi-utils/.venv/`
-
-**GitHub clone fails:**
-- Verify SSH key is added to GitHub
-- Test connection: `ssh -T git@github.com`
-- Check SSH key permissions: `chmod 600 ~/.ssh/id_ed25519`
+| Utility | Settings |
+|---|---|
+| `supabase-keepalive` | `SUPABASE_URL`, `SUPABASE_KEY` (Supabase Dashboard → Settings → API). Runs daily via systemd timer. |
+| `status-dashboard` | `PORT` (default `80`). Access at `http://rasppi-utils.local`. No auth — trusted networks only. |
+| `pixels64` | `PORT` (default `8443`). Access at `https://rasppi-utils.local:8443` in Chrome/Edge. HTTPS with a self-signed cert (one-time browser warning) — required for Web Bluetooth. The page connects to your ESP32 boards directly over Bluetooth. |
+| `social-poster` | `PORT` (default `5050`), `PUBLIC_BASE_URL`, `CLOUDFLARE_TUNNEL_TOKEN` (Instagram only — see [setup](#social-poster-frontend)). Access at `http://rasppi-utils.local:5050`. Upload an image, pick accounts, schedule on a calendar; a per-minute timer publishes due posts. Add Instagram (user ID + long-lived access token, Graph API) and Bluesky (handle + app password) accounts in the UI. Data in `/var/lib/rasppi-utils/social-poster`. Instagram needs a public image URL, so a Cloudflare Tunnel (`social-poster-tunnel` service) exposes this app; Bluesky works without it. |
 
 ## Updating
 
-To update to the latest version:
+```bash
+cd ~/rasppi-utils && git pull && sudo ./bootstrap-pi.sh
+```
+
+## Troubleshooting
 
 ```bash
-cd ~/rasppi-utils
-git pull
-sudo ./bootstrap.sh
+sudo journalctl -u <utility>.service -n 50   # recent logs
+sudo journalctl -u <utility>.service -f      # follow logs
+sudo systemctl list-timers                   # scheduled runs
 ```
 
-This will:
-- Pull the latest code
-- Update Python dependencies if needed
-- Re-sync utilities (preserving your configuration)
+If a service won't start, check the logs and confirm its config exists at `/etc/rasppi-utils/<utility>/.env`.
 
-## Project Structure
+## Adding a utility
 
-```
-rasppi-utils/
-├── bootstrap.sh              # One-time Pi setup
-├── sync.sh                   # Utility management
-├── utilities.conf            # Which utilities are enabled
-├── requirements.txt          # Python dependencies
-├── supabase-keepalive/       # Keeps Supabase projects active
-│   ├── scripts/
-│   │   └── keepalive.py
-│   ├── config/
-│   │   └── .env.example
-│   └── systemd/
-│       ├── supabase-keepalive.service
-│       └── supabase-keepalive.timer
-├── status-dashboard/         # Web dashboard for monitoring
-│   ├── scripts/
-│   │   └── server.py
-│   ├── config/
-│   │   └── .env.example
-│   └── systemd/
-│       └── status-dashboard.service
-└── tests/
-    └── supabase-keepalive/
-        └── test_keepalive.py
-```
-
-## Adding New Utilities
-
-Each utility follows this structure:
+Each utility is a directory:
 
 ```
 utility-name/
-├── scripts/           # Executable scripts
-│   └── main.py
-├── config/
-│   └── .env.example   # Configuration template
-└── systemd/
-    ├── utility-name.service
-    └── utility-name.timer    # Optional, for scheduled tasks
+├── scripts/         # executable scripts
+├── config/.env.example
+└── systemd/         # *.service (+ optional *.timer), use {{INSTALL_DIR}} for paths
 ```
 
-To add a new utility:
-1. Create the directory structure
-2. Add systemd units using `{{INSTALL_DIR}}` placeholder for paths (will be replaced during installation)
-3. Add the utility name to `utilities.conf`
-4. Run `sudo ./sync.sh`
+Create it, add its name to `utilities.conf`, then run `sudo ./sync.sh`.
+
+## social-poster frontend
+
+The web app is React/TS (Vite). The Pi serves the prebuilt bundle and needs no Node toolchain, so `web/dist/` is committed.
+
+Dev (needs the repo `.venv` set up — see Setup):
+
+```bash
+cd social-poster
+npm install      # concurrently + web deps
+npm run dev      # Flask :5050 + Vite :5173 together (open http://localhost:5173)
+npm run build    # rebuild web/dist/ before committing UI changes
+```
+
+A pre-commit hook (`.githooks/pre-commit`) rebuilds `web/dist/` automatically when you commit changes under `web/src`. Enable it once per clone with `git config core.hooksPath .githooks`.
+
+### Instagram tunnel (production)
+
+Instagram's Graph API fetches each photo from a public URL, so the Pi must be reachable from the internet. We use a Cloudflare Tunnel (no open ports) run by the `social-poster-tunnel` systemd service. One-time setup:
+
+1. In the [Cloudflare Zero Trust dashboard](https://one.dash.cloudflare.com): **Networks → Tunnels → Create a tunnel → Cloudflared**, name it, and copy the token from the `cloudflared ... run --token <TOKEN>` command it shows.
+2. Under that tunnel's **Public Hostnames**, add: subdomain `poster`, domain `travisbumgarner.photography`, service **HTTP** → `localhost:5050`.
+3. Put the token in `/etc/rasppi-utils/social-poster/.env` as `CLOUDFLARE_TUNNEL_TOKEN=...` (and keep `PUBLIC_BASE_URL=https://poster.travisbumgarner.photography`), then `sudo ./sync.sh`.
+
+Bluesky posting works without any of this; only Instagram needs the tunnel. Set `DRY_RUN=1` to exercise the UI/scheduler without sending real posts.

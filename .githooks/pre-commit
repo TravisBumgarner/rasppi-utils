@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+#
+# Keep social-poster/web/dist in sync with its source.
+#
+# The Pi serves the *committed* build (it has no Node toolchain), so a stale
+# dist ships a stale UI. This rebuilds and re-stages dist whenever a commit
+# touches the web app's source or build config.
+#
+set -euo pipefail
+
+web="social-poster/web"
+
+# Only rebuild when staged changes touch the web app's source/config.
+if git diff --cached --name-only \
+    | grep -qE "^${web}/(src/|index\.html|package(-lock)?\.json|vite\.config\.ts|tsconfig.*\.json)"; then
+
+  echo "pre-commit: social-poster web source changed -> rebuilding dist..."
+
+  if [ ! -d "${web}/node_modules" ]; then
+    echo "pre-commit: ${web}/node_modules missing -- run 'npm install' there first." >&2
+    exit 1
+  fi
+
+  ( cd "${web}" && npm run build )
+  git add "${web}/dist"
+  echo "pre-commit: dist rebuilt and staged."
+fi
