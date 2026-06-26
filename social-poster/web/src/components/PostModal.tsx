@@ -234,113 +234,130 @@ export function PostModal({ onClose, post, initialScheduledAt }: PostModalProps)
         </div>
 
         <form className="form" onSubmit={onSubmit} noValidate>
-          <div className="form-scroll">
-            {isEdit && post && isOverdue(post) && (
-              <div className="overdue-banner">
-                ⚠ This post missed its scheduled time — the server may have been
-                down. Send it now, or pick a future time and save.
-              </div>
-            )}
-
-            <div className="field">
-              <span className="field-label">Accounts *</span>
-            {accountsLoading && <span className="muted">Loading…</span>}
-            {!accountsLoading && (accounts?.length ?? 0) === 0 && (
-              <span className="muted">
-                No accounts yet — add one in Accounts first.
-              </span>
-            )}
-            <div className="checkbox-list">
-              {accounts?.map((account) => (
-                <label key={account.id} className="checkbox-row">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.includes(account.id)}
-                    onChange={(e) => toggleAccount(account.id, e.target.checked)}
-                  />
-                  <span>
-                    {account.username}{' '}
-                    <span className="muted">({account.platform})</span>
-                  </span>
-                </label>
-              ))}
+          {isEdit && post && isOverdue(post) && (
+            <div className="overdue-banner">
+              ⚠ This post missed its scheduled time — the server may have been
+              down. Send it now, or pick a future time and save.
             </div>
-            {errors.account_ids && (
-              <span className="field-error">{errors.account_ids.message}</span>
-            )}
-          </div>
-
-          {selectedPlatforms.size === 0 ? (
-            <p className="muted field-help">
-              Select an account to write its caption — @-mentions differ per
-              platform, so each gets its own.
-            </p>
-          ) : (
-            ALL_PLATFORMS.filter((p) => selectedPlatforms.has(p)).map(
-              (platform) => (
-                <label key={platform} className="field">
-                  <span className="field-label">
-                    {PLATFORM_LABEL[platform]} caption
-                  </span>
-                  <textarea
-                    rows={3}
-                    placeholder={`Write the ${PLATFORM_LABEL[platform]} caption (optional)…`}
-                    {...register(CAPTION_FIELD[platform])}
-                  />
-                  {errors[CAPTION_FIELD[platform]] && (
-                    <span className="field-error">
-                      {errors[CAPTION_FIELD[platform]]?.message}
-                    </span>
-                  )}
-                </label>
-              )
-            )
           )}
 
-          <label className="field">
-            <span className="field-label">
-              {isEdit ? 'Replace image (optional)' : 'Image *'}
-            </span>
-            {(filePreview || (isEdit && post)) && (
-              <img
-                className="post-preview"
-                src={filePreview ?? post!.image_url}
-                alt=""
-              />
-            )}
-            <input type="file" accept="image/*" {...register('image')} />
-            {errors.image && (
-              <span className="field-error">{errors.image.message}</span>
-            )}
-          </label>
+          <div className="post-modal-body">
+            {/* LEFT: image preview + picker */}
+            <div className="post-modal-image">
+              <div className="post-image-frame">
+                {filePreview || (isEdit && post) ? (
+                  <img
+                    className="post-preview"
+                    src={filePreview ?? post!.image_url}
+                    alt=""
+                  />
+                ) : (
+                  <span className="post-image-placeholder">
+                    No image selected yet
+                  </span>
+                )}
+              </div>
+              <label className="field">
+                <span className="field-label">
+                  {isEdit ? 'Replace image (optional)' : 'Image *'}
+                </span>
+                <input type="file" accept="image/*" {...register('image')} />
+                {errors.image && (
+                  <span className="field-error">{errors.image.message}</span>
+                )}
+              </label>
+            </div>
 
-          <div className="field">
-            <span className="field-label">Scheduled time *</span>
-            <input type="datetime-local" {...register('scheduled_at')} />
-            {commonTimes.length > 0 && (
-              <select
-                className="time-preset"
-                value=""
-                onChange={(e) => {
-                  if (e.target.value) {
-                    applyPresetTime(e.target.value);
-                  }
-                }}
-                aria-label="Quick time"
-              >
-                <option value="">Quick time…</option>
-                {commonTimes.map((t) => (
-                  <option key={t} value={t}>
-                    {formatHHMM(t)}
-                  </option>
-                ))}
-              </select>
-            )}
-            {errors.scheduled_at && (
-              <span className="field-error">{errors.scheduled_at.message}</span>
-            )}
-          </div>
+            {/* RIGHT: scrollable metadata */}
+            <div className="post-modal-meta">
+              <div className="field">
+                <span className="field-label">Accounts *</span>
+                {accountsLoading && <span className="muted">Loading…</span>}
+                {!accountsLoading && (accounts?.length ?? 0) === 0 && (
+                  <span className="muted">
+                    No accounts yet — add one in Accounts first.
+                  </span>
+                )}
+                <div className="checkbox-list">
+                  {accounts?.map((account) => (
+                    <label key={account.id} className="checkbox-row">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(account.id)}
+                        onChange={(e) =>
+                          toggleAccount(account.id, e.target.checked)
+                        }
+                      />
+                      <span>
+                        {account.username}{' '}
+                        <span className="muted">({account.platform})</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {errors.account_ids && (
+                  <span className="field-error">
+                    {errors.account_ids.message}
+                  </span>
+                )}
+              </div>
 
+              {selectedPlatforms.size === 0 ? (
+                <p className="muted field-help">
+                  Select an account to write its caption — @-mentions differ per
+                  platform, so each gets its own.
+                </p>
+              ) : (
+                ALL_PLATFORMS.filter((p) => selectedPlatforms.has(p)).map(
+                  (platform) => (
+                    <label key={platform} className="field">
+                      <span className="field-label">
+                        {PLATFORM_LABEL[platform]} caption
+                      </span>
+                      <textarea
+                        rows={3}
+                        placeholder={`Write the ${PLATFORM_LABEL[platform]} caption (optional)…`}
+                        {...register(CAPTION_FIELD[platform])}
+                      />
+                      {errors[CAPTION_FIELD[platform]] && (
+                        <span className="field-error">
+                          {errors[CAPTION_FIELD[platform]]?.message}
+                        </span>
+                      )}
+                    </label>
+                  )
+                )
+              )}
+
+              <div className="field">
+                <span className="field-label">Scheduled time *</span>
+                <input type="datetime-local" {...register('scheduled_at')} />
+                {commonTimes.length > 0 && (
+                  <select
+                    className="time-preset"
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        applyPresetTime(e.target.value);
+                      }
+                    }}
+                    aria-label="Quick time"
+                  >
+                    <option value="">Quick time…</option>
+                    {commonTimes.map((t) => (
+                      <option key={t} value={t}>
+                        {formatHHMM(t)}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {errors.scheduled_at && (
+                  <span className="field-error">
+                    {errors.scheduled_at.message}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Always rendered so an error appearing doesn't shift the layout. */}

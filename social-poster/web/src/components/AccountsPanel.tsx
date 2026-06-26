@@ -131,7 +131,7 @@ export function AccountsPanel({ onClose }: AccountsPanelProps) {
   return (
     <div className="modal-backdrop" onClick={onClose} role="presentation">
       <div
-        className="modal"
+        className="modal modal--accounts"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -149,7 +149,10 @@ export function AccountsPanel({ onClose }: AccountsPanelProps) {
           </button>
         </div>
 
-        <div className="accounts-list">
+        <div className="accounts-body">
+          <div className="accounts-col accounts-connected">
+            <h3 className="form-subtitle">Connected accounts</h3>
+            <div className="accounts-list">
           {isLoading && <div className="state-msg">Loading accounts…</div>}
           {isError && (
             <div className="state-msg state-error">{error.message}</div>
@@ -180,9 +183,11 @@ export function AccountsPanel({ onClose }: AccountsPanelProps) {
               </button>
             </div>
           ))}
-        </div>
+            </div>
+          </div>
 
-        <form className="form" onSubmit={onSubmit} noValidate>
+          <form className="accounts-col form accounts-add" onSubmit={onSubmit} noValidate>
+            <div className="accounts-add-scroll">
           <h3 className="form-subtitle">Add an account</h3>
           <p className="muted form-hint">
             Logging in verifies the credentials and saves the account.
@@ -299,16 +304,19 @@ export function AccountsPanel({ onClose }: AccountsPanelProps) {
             </div>
           )}
 
-          <div className="modal-actions">
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={createAccount.isPending || !hasRequiredCreds}
-            >
-              {createAccount.isPending ? 'Logging in…' : 'Log in'}
-            </button>
-          </div>
-        </form>
+            </div>
+
+            <div className="modal-actions">
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={createAccount.isPending || !hasRequiredCreds}
+              >
+                {createAccount.isPending ? 'Logging in…' : 'Log in'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

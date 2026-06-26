@@ -738,13 +738,14 @@ body {
   margin: auto;
 }
 
-/* The post modal sizes to its content but caps at the viewport, scrolling its
-   body internally only when it would otherwise overflow. (The reserved error
-   slot is what prevents the error-message layout shift — not a forced height.) */
+/* The post modal is a fixed-height, two-column dialog (image left, metadata
+   right) so New and Edit always look identical regardless of content. The
+   reserved error slot keeps the error message from shifting the layout. */
 .modal--post {
   display: flex;
   flex-direction: column;
-  max-height: 90vh;
+  max-width: 820px;
+  height: min(620px, 90vh);
 }
 
 .modal--post .modal-header {
@@ -756,14 +757,72 @@ body {
   min-height: 0;
 }
 
-/* Scrollable field area; the error slot and action buttons stay pinned. */
-.form-scroll {
+/* Two-column body: image picker left, scrollable metadata right. */
+.post-modal-body {
   flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) 1fr;
+  gap: 20px;
+}
+
+.post-modal-image {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+/* Fills the column height; the image is contained within. */
+.post-image-frame {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.post-image-placeholder {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.post-modal-image .post-preview {
+  width: auto;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* The metadata column scrolls on its own; header/error/actions stay pinned. */
+.post-modal-meta {
   min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 14px;
+  padding-right: 4px;
+}
+
+/* Narrow screens: stack to one column and let the body scroll as a whole. */
+@media (max-width: 700px) {
+  .modal--post {
+    height: auto;
+    max-height: 90vh;
+  }
+  .post-modal-body {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+  .post-image-frame {
+    min-height: 200px;
+  }
+  .post-modal-meta {
+    overflow: visible;
+  }
 }
 
 .modal-header {
@@ -934,12 +993,93 @@ textarea {
 }
 
 /* ---------- Accounts ---------- */
+/* Fixed-height, two-column accounts modal: connected accounts left, add-new
+   form right. Mirrors the post modal so the two dialogs feel consistent. */
+.modal--accounts {
+  display: flex;
+  flex-direction: column;
+  max-width: 820px;
+  height: min(620px, 90vh);
+}
+
+.modal--accounts .modal-header {
+  flex-shrink: 0;
+}
+
+.accounts-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.accounts-col {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.accounts-connected {
+  border-right: 1px solid var(--border);
+  padding: 16px 20px;
+  gap: 10px;
+}
+
+.accounts-connected .form-subtitle {
+  flex-shrink: 0;
+}
+
+/* The add-account form fills its column; fields scroll, the button is pinned. */
+.accounts-add {
+  padding: 0;
+  overflow: hidden;
+}
+
+.accounts-add-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 20px;
+}
+
+.accounts-add .modal-actions {
+  flex-shrink: 0;
+  margin-top: 0;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+}
+
 .accounts-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
+}
+
+@media (max-width: 700px) {
+  .modal--accounts {
+    height: auto;
+    max-height: 90vh;
+  }
+  .accounts-body {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+  .accounts-connected {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .accounts-list {
+    overflow: visible;
+  }
+  .accounts-add {
+    overflow: visible;
+  }
 }
 
 .account-row {
