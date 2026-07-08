@@ -12,13 +12,16 @@ Follow-ups from the July 2026 tag research
       tag lists if any theme is adopted later.
 - [ ] ~~Add matching Lightroom keywords under `cameracoffeewander|PhotoType|<Name>`~~
       n/a while the themes are skipped.
-- [ ] Dogs features are submission-based, not tag-based: email your best 2-3 dog
+- [x] Dogs features are submission-based, not tag-based: email your best 2-3 dog
       shots to dogs.instagram@gmail.com (@dogsofinstagram, 5M).
 - [ ] In-app: spend 10 min on #mountainphotography / #forestphotography /
       #desertphotography looking for mid-size (50-500K) curator accounts web
       search can't surface; same for #dogsofbluesky on Bluesky.
-- [ ] Verify @moodygrams / @nightphotography exact feature mechanics in-app
-      (bio/pinned post) before relying on them.
+- [x] Verify @moodygrams / @nightphotography feature mechanics in-app — DONE
+      (July 2026): **@moodygrams confirmed** — bio says "Use our tags for
+      repost: #MoodyGrams #MoodyPorts" (scope is broad: travel/lifestyle/
+      events/meets, not just moody landscape). **@nightphotography rejected**
+      — removed from the Night theme recommendation.
 
 ## Lightroom — add 20 keywords
 

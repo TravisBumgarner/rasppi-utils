@@ -59,10 +59,12 @@ No dedicated hub found. Reflection/lake work also performs in the moody ecosyste
 
 ## 4. Fog, mist & moody (~16%) — STRONGEST NEW HUB
 
-- **`@moodygrams` / `#moodygrams`** ✅ — 989K, "photography community that shares
-  the work of the moody, artistic, and emotive"; features via the hashtag.
-  Sibling `@moodyports` / `#moodyports` for moody portraits (bonus for your
-  Portrait entry).
+- **`@moodygrams` / `#MoodyGrams`** ✅✅ — 989K. **Verified in-app July 2026:**
+  bio reads "It's all about the MOOD / Featuring creativity of all kinds!
+  |Travel|Lifestyle|Events|Meets / Use our tags for repost: #MoodyGrams
+  #MoodyPorts". Scope is broader than moody landscape — travel/lifestyle/
+  events qualify too. Sibling `#MoodyPorts` (same bio) for moody portraits
+  (bonus for your Portrait entry).
 - **general:** `#fog`, `#mist`, `#foggymorning`, `#moodynature`, `#mistymorning`
 - **priority:** `#moodygrams`, `@moodygrams`
 - **bluesky:** `#fog`, `#moody`, `#landscapephotography`
@@ -90,13 +92,12 @@ content).
 
 ## 7. Night & low light (~11%)
 
-- **`@nightphotography`** ✅ — 590K, "YOU OWN THE NIGHT", city & nature night work;
-  partner account **`@nightphotography_exclusive`** ✅ 467K. Repost accounts run by
-  the same team; mechanism is tag/mention (⚠️ exact tag not published — use both
-  handle mention and `#nightphotography`).
+- ~~`@nightphotography` / `@nightphotography_exclusive`~~ ❌ — REJECTED after
+  in-app check (July 2026); do not use as a hub. No verified night curator
+  remains — night work rides the generic tags below.
 - **general:** `#nightphotography`, `#nightscape`, `#night_shooterz`, `#lowlight`,
   `#afterdark`
-- **priority:** `@nightphotography`, `#nightphotography_exclusive`
+- **priority:** — (no verified hub)
 - **bluesky:** `#nightphotography`, `#night`
 
 ## 8. Hiking & adventure (~9%)
