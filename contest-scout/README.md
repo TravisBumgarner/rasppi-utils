@@ -10,31 +10,27 @@ your phone with the summary — the nudge that it's time to review the month's
 contests. Failures notify too (high priority), so silence always means "the
 timer didn't fire," never "it broke quietly."
 
-## One-time Pi setup
+## Setup
 
-1. **Claude Code CLI** on the Pi:
+`sudo ./bootstrap-pi.sh` (idempotent, run from the repo root) handles the
+machine side when `contest-scout` is enabled in
+[utilities.conf](../utilities.conf): installs Node + the Claude Code CLI,
+allowlists the repo for root git, prompts once for a GitHub PAT if pushing
+isn't authorized, installs the service + timer via `sync.sh`, and warns
+about any placeholder credentials left in the `.env`.
 
-   ```sh
-   npm install -g @anthropic-ai/claude-code
-   which claude   # if not /usr/local/bin, set CLAUDE_BIN in the .env
-   ```
+Two credentials come from external accounts, so they stay manual — paste
+them into `/etc/rasppi-utils/contest-scout/.env`:
 
-2. **Credentials** — on any machine where you're logged in to Claude, run
-   `claude setup-token` and paste the token into the `.env` when `sync.sh`
-   prompts (uses your subscription; alternatively set `ANTHROPIC_API_KEY`
-   for API billing).
+1. **Claude token** — on any machine where you're logged in to Claude, run
+   `claude setup-token` and set `CLAUDE_CODE_OAUTH_TOKEN` (uses your
+   subscription; alternatively set `ANTHROPIC_API_KEY` for API billing).
+2. **Pushover** — create an application at <https://pushover.net/apps/build>
+   (`PUSHOVER_APP_TOKEN`) and grab your user key from the dashboard
+   (`PUSHOVER_USER_KEY`).
 
-3. **Pushover** — create an application at <https://pushover.net/apps/build>
-   (app token) and grab your user key from the dashboard.
-
-4. **Git push auth** — the sweep commits to the Pi's clone and pushes. The
-   default clone is HTTPS, so either store a GitHub PAT
-   (`git config credential.helper store` + one manual push) or switch the
-   remote to SSH with a deploy key. If push auth is missing the run still
-   works; the notification will say the commit is stranded on the Pi.
-
-5. Enable it: `contest-scout` in [utilities.conf](../utilities.conf), then
-   `sudo ./sync.sh` (prompts for the `.env`, installs the service + timer).
+If push auth is ever missing, runs still work — the notification will say
+the commit is stranded on the Pi's clone.
 
 ## Operating
 
