@@ -339,6 +339,23 @@ sync_utilities() {
     read -ra available <<< "$(get_available_utilities)"
     read -ra enabled <<< "$(get_enabled_utilities)"
 
+    # An enabled utility with no directory on disk (e.g. this checkout
+    # predates it) would otherwise be skipped without a trace — say so.
+    local utility found candidate
+    for utility in "${enabled[@]}"; do
+        found=false
+        for candidate in "${available[@]}"; do
+            if [[ "$candidate" == "$utility" ]]; then
+                found=true
+                break
+            fi
+        done
+        if [[ "$found" == false ]]; then
+            log_warn "'${utility}' is enabled in utilities.conf but ${SCRIPT_DIR}/${utility}/systemd/ doesn't exist"
+            log_warn "  Is this checkout up to date? (git pull) Skipping it."
+        fi
+    done
+
     local changes_made=false
 
     # Process each available utility
