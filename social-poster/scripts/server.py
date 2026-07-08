@@ -10,6 +10,7 @@ never posts) to verify credentials before they are saved.
 
 import json
 import os
+import tempfile
 import threading
 import time
 import traceback
@@ -26,12 +27,13 @@ from flask import (
 from werkzeug.utils import secure_filename
 
 try:
-    from . import config, db, platforms, publisher
+    from . import config, db, platforms, publisher, tagging
 except ImportError:  # Allows running directly as `python server.py`.
     import config
     import db
     import platforms
     import publisher
+    import tagging
 
 app = Flask(__name__)
 
@@ -49,7 +51,7 @@ REQUIRED_CREDS = {
     "bluesky": ("handle", "app_password"),
 }
 
-ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"}
 
 
 # ---------------------------------------------------------------------------
@@ -280,9 +282,36 @@ def _get_setting(conn, key: str, default):
         return default
 
 
+def _serialize_bulk_schedule(raw) -> Dict:
+    """Return the bulk schedule in its current shape: ``{"slots": [{"day":
+    0-6, "time": "HH:MM"}, ...]}`` (days use JS Date.getDay() numbering).
+
+    Migrates the earlier ``{"days": [...], "times": [...]}`` shape by
+    expanding the cross-product.
+    """
+    if isinstance(raw, dict) and isinstance(raw.get("slots"), list):
+        return raw
+    if (
+        isinstance(raw, dict)
+        and isinstance(raw.get("days"), list)
+        and isinstance(raw.get("times"), list)
+    ):
+        return {
+            "slots": [
+                {"day": d, "time": t} for d in raw["days"] for t in raw["times"]
+            ]
+        }
+    return {"slots": []}
+
+
 def _serialize_settings(conn) -> Dict:
     """Return all app settings in their API shape."""
-    return {"common_times": _get_setting(conn, "common_times", [])}
+    return {
+        "common_times": _get_setting(conn, "common_times", []),
+        "bulk_schedule": _serialize_bulk_schedule(
+            _get_setting(conn, "bulk_schedule", None)
+        ),
+    }
 
 
 def _valid_hhmm(value) -> bool:
@@ -308,13 +337,57 @@ def get_settings():
         conn.close()
 
 
+def _valid_bulk_schedule(value) -> bool:
+    """True if value is ``{"slots": [{"day": 0-6, "time": "HH:MM"}, ...]}``.
+
+    Each slot pairs a day with a time independently (per-day posting times).
+    Days use JavaScript's ``Date.getDay()`` numbering: 0 = Sunday … 6 = Saturday.
+    """
+    if not isinstance(value, dict) or not isinstance(value.get("slots"), list):
+        return False
+    return all(
+        isinstance(slot, dict)
+        and isinstance(slot.get("day"), int)
+        and 0 <= slot["day"] <= 6
+        and _valid_hhmm(slot.get("time"))
+        for slot in value["slots"]
+    )
+
+
 @app.route("/api/settings", methods=["PUT"])
 def update_settings():
-    """Update settings. Body may include ``common_times`` (list of 'HH:MM')."""
+    """Update settings. Body may include ``common_times`` (list of 'HH:MM')
+    and/or ``bulk_schedule`` (``{"days": [...], "times": [...]}``)."""
     body = request.get_json(silent=True) or {}
 
     conn = db.get_connection()
     try:
+        if "bulk_schedule" in body:
+            schedule = body["bulk_schedule"]
+            if not _valid_bulk_schedule(schedule):
+                return (
+                    jsonify(
+                        {
+                            "error": "bulk_schedule must be "
+                            '{"slots": [{"day": 0-6, "time": "HH:MM"}]}'
+                        }
+                    ),
+                    400,
+                )
+            # De-duplicate and keep (day, time) sorted for stable display.
+            unique = sorted(
+                {(s["day"], s["time"]) for s in schedule["slots"]}
+            )
+            normalized_schedule = {
+                "slots": [{"day": d, "time": t} for d, t in unique]
+            }
+            conn.execute(
+                "INSERT INTO settings (key, value) VALUES ('bulk_schedule', ?) "
+                "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (json.dumps(normalized_schedule),),
+            )
+            conn.commit()
+
         if "common_times" in body:
             times = body["common_times"]
             if not isinstance(times, list) or not all(
@@ -432,8 +505,28 @@ def _account_platforms(conn, account_ids: List[int]) -> Tuple[Optional[Dict[int,
     return found, None
 
 
+def _convert_avif_to_jpeg(image, dest_path: str) -> None:
+    """Re-encode an uploaded AVIF as JPEG, carrying EXIF and the XMP packet
+    through so the tagging script still sees the Lightroom metadata."""
+    from PIL import Image
+
+    with Image.open(image.stream) as img:
+        kwargs = {}
+        exif = img.getexif()
+        if exif:
+            kwargs["exif"] = exif.tobytes()
+        xmp = img.info.get("xmp")
+        if xmp:
+            kwargs["xmp"] = xmp
+        img.convert("RGB").save(dest_path, format="JPEG", quality=92, **kwargs)
+
+
 def _save_uploaded_image(image) -> Tuple[Optional[str], Optional[Tuple]]:
     """Validate and persist an uploaded image, returning its stored filename.
+
+    AVIF uploads are converted to JPEG: Instagram's Graph API only fetches
+    JPEGs and Bluesky doesn't render AVIF, but Lightroom exports arrive as
+    AVIF — the conversion keeps their EXIF/XMP so tagging still works.
 
     Returns ``(filename, error)`` where ``error`` is ``None`` on success or a
     ``(json_response, status_code)`` tuple to return on invalid input.
@@ -444,6 +537,16 @@ def _save_uploaded_image(image) -> Tuple[Optional[str], Optional[Tuple]]:
     db.ensure_dirs()
     # Unique, sanitized filename that keeps the original extension.
     safe_stem = secure_filename(Path(image.filename).stem) or "image"
+    if ext == ".avif":
+        filename = f"{uuid.uuid4().hex}_{safe_stem}.jpg"
+        try:
+            _convert_avif_to_jpeg(image, str(db.IMAGES_DIR / filename))
+        except Exception as exc:  # noqa: BLE001 - corrupt/unreadable upload
+            return None, (
+                jsonify({"error": f"could not convert AVIF: {exc}"}),
+                400,
+            )
+        return filename, None
     filename = f"{uuid.uuid4().hex}_{safe_stem}{ext}"
     image.save(str(db.IMAGES_DIR / filename))
     return filename, None
@@ -821,6 +924,298 @@ def delete_post(post_id: int):
         return ("", 204)
     finally:
         conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Bulk ingestion API
+#
+# Staging pipeline: photos are bulk-uploaded into ``ingest_items``, a
+# background thread fills in each item's description via the tagging script,
+# the user reviews/edits the descriptions in the UI, and approving converts
+# the items into real scheduled posts (one per photo).
+# ---------------------------------------------------------------------------
+def serialize_ingest_item(row) -> Dict:
+    """Serialize an ingest_items row into its API shape."""
+    try:
+        captions = json.loads(row["captions"])
+    except (json.JSONDecodeError, TypeError):
+        captions = {}
+    return {
+        "id": row["id"],
+        "image_url": "/api/images/" + row["image_filename"],
+        "captions": captions,
+        "tag_status": row["tag_status"],
+        "tag_error": row["tag_error"],
+        "created_at": row["created_at"],
+    }
+
+
+def _run_tagging(item_ids: List[int]) -> None:
+    """Extract per-platform captions for each staged item (daemon thread).
+
+    Items are processed one at a time with a fresh connection each, so a slow
+    tagging script never holds a long write lock. An item edited by the user
+    before tagging finishes (tag_status no longer 'pending') is left alone —
+    the user's text wins. A failure marks just that item as failed.
+    """
+    for item_id in item_ids:
+        conn = db.get_connection()
+        try:
+            row = conn.execute(
+                "SELECT image_filename, tag_status FROM ingest_items WHERE id = ?",
+                (item_id,),
+            ).fetchone()
+            if row is None or row["tag_status"] != "pending":
+                continue  # discarded or already edited by the user
+            try:
+                captions = tagging.extract_captions(
+                    str(db.IMAGES_DIR / row["image_filename"])
+                )
+                conn.execute(
+                    "UPDATE ingest_items SET captions = ?, tag_status = 'tagged' "
+                    "WHERE id = ? AND tag_status = 'pending'",
+                    (json.dumps(captions), item_id),
+                )
+            except Exception as exc:  # noqa: BLE001 - one bad image must not kill the batch.
+                conn.execute(
+                    "UPDATE ingest_items SET tag_status = 'failed', tag_error = ? "
+                    "WHERE id = ? AND tag_status = 'pending'",
+                    (str(exc), item_id),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+
+
+@app.route("/api/ingest", methods=["GET"])
+def list_ingest_items():
+    """Return all staged ingest items, oldest first (their slot order)."""
+    conn = db.get_connection()
+    try:
+        rows = conn.execute("SELECT * FROM ingest_items ORDER BY id").fetchall()
+        return jsonify([serialize_ingest_item(r) for r in rows]), 200
+    finally:
+        conn.close()
+
+
+@app.route("/api/ingest", methods=["POST"])
+def create_ingest_items():
+    """Stage photos for bulk ingestion from multipart/form-data.
+
+    Field: images (one or more files). All files are validated up front so a
+    bad file rejects the whole batch before anything is saved. Returns the
+    created items immediately with tag_status 'pending'; a background thread
+    fills in descriptions via the tagging script.
+    """
+    images = [f for f in request.files.getlist("images") if f and f.filename]
+    if not images:
+        return jsonify({"error": "at least one image file is required"}), 400
+    bad = [
+        f.filename
+        for f in images
+        if Path(f.filename).suffix.lower() not in ALLOWED_IMAGE_EXTENSIONS
+    ]
+    if bad:
+        return jsonify({"error": f"unsupported image type(s): {bad}"}), 400
+
+    conn = db.get_connection()
+    try:
+        now = db.utc_now_iso()
+        created_ids: List[int] = []
+        for image in images:
+            filename, img_err = _save_uploaded_image(image)
+            if img_err is not None:
+                return img_err
+            cur = conn.execute(
+                "INSERT INTO ingest_items (image_filename, created_at) "
+                "VALUES (?, ?)",
+                (filename, now),
+            )
+            created_ids.append(cur.lastrowid)
+        conn.commit()
+
+        threading.Thread(
+            target=_run_tagging,
+            args=(created_ids,),
+            name="ingest-tagging",
+            daemon=True,
+        ).start()
+
+        placeholders = ",".join("?" for _ in created_ids)
+        rows = conn.execute(
+            f"SELECT * FROM ingest_items WHERE id IN ({placeholders}) ORDER BY id",
+            created_ids,
+        ).fetchall()
+        return jsonify([serialize_ingest_item(r) for r in rows]), 201
+    finally:
+        conn.close()
+
+
+@app.route("/api/ingest/<int:item_id>", methods=["PATCH"])
+def update_ingest_item(item_id: int):
+    """Update a staged item's captions (the user editing during review).
+
+    Body: ``{"captions": {"instagram": "...", "bluesky": "..."}}``. Also
+    promotes a still-'pending' item to 'tagged' so the tagging thread won't
+    overwrite the user's text if it finishes later.
+    """
+    body = request.get_json(silent=True) or {}
+    captions = body.get("captions")
+    if not isinstance(captions, dict):
+        return jsonify({"error": "captions must be a JSON object"}), 400
+
+    conn = db.get_connection()
+    try:
+        row = conn.execute(
+            "SELECT * FROM ingest_items WHERE id = ?", (item_id,)
+        ).fetchone()
+        if row is None:
+            return jsonify({"error": "ingest item not found"}), 404
+        conn.execute(
+            "UPDATE ingest_items SET captions = ?, tag_status = 'tagged', "
+            "tag_error = NULL WHERE id = ?",
+            (json.dumps({str(k): str(v) for k, v in captions.items()}), item_id),
+        )
+        conn.commit()
+        row = conn.execute(
+            "SELECT * FROM ingest_items WHERE id = ?", (item_id,)
+        ).fetchone()
+        return jsonify(serialize_ingest_item(row)), 200
+    finally:
+        conn.close()
+
+
+@app.route("/api/ingest/<int:item_id>", methods=["DELETE"])
+def delete_ingest_item(item_id: int):
+    """Discard a staged item and its uploaded image file."""
+    conn = db.get_connection()
+    try:
+        row = conn.execute(
+            "SELECT image_filename FROM ingest_items WHERE id = ?", (item_id,)
+        ).fetchone()
+        if row is not None:
+            _delete_image_file(row["image_filename"])
+            conn.execute("DELETE FROM ingest_items WHERE id = ?", (item_id,))
+            conn.commit()
+        return ("", 204)
+    finally:
+        conn.close()
+
+
+@app.route("/api/ingest/approve", methods=["POST"])
+def approve_ingest_items():
+    """Convert approved staged items into scheduled posts.
+
+    JSON body: ``account_ids`` (targets for every item) and ``items``, a list
+    of ``{"id": ..., "scheduled_at": ISO-8601, "captions": {platform: str}}``.
+    Each target gets the caption for its account's platform, same as regular
+    post creation. All items are validated first — unknown ids, missing
+    times, or Instagram-incompatible images reject the whole batch — then
+    every item becomes a post and its staging row is removed (image files are
+    kept; posts reuse them).
+    """
+    body = request.get_json(silent=True) or {}
+    account_ids = body.get("account_ids")
+    items = body.get("items")
+
+    if not isinstance(account_ids, list) or not account_ids:
+        return jsonify({"error": "account_ids must be a non-empty array"}), 400
+    try:
+        account_ids = [int(x) for x in account_ids]
+    except (ValueError, TypeError):
+        return jsonify({"error": "account_ids must contain integers"}), 400
+    if not isinstance(items, list) or not items:
+        return jsonify({"error": "items must be a non-empty array"}), 400
+    for item in items:
+        if not isinstance(item, dict) or not item.get("id"):
+            return jsonify({"error": "each item needs an id"}), 400
+        if not item.get("scheduled_at"):
+            return jsonify({"error": "each item needs a scheduled_at"}), 400
+
+    conn = db.get_connection()
+    try:
+        platforms_by_id, plat_err = _account_platforms(conn, account_ids)
+        if plat_err is not None:
+            return jsonify({"error": plat_err}), 400
+
+        item_ids = [int(item["id"]) for item in items]
+        placeholders = ",".join("?" for _ in item_ids)
+        rows = conn.execute(
+            f"SELECT * FROM ingest_items WHERE id IN ({placeholders})",
+            item_ids,
+        ).fetchall()
+        rows_by_id = {row["id"]: row for row in rows}
+        missing = [i for i in item_ids if i not in rows_by_id]
+        if missing:
+            return jsonify({"error": f"unknown ingest item id(s): {missing}"}), 400
+
+        # Validate every image before creating anything, so approval is
+        # all-or-nothing and a bad image names its file in the error.
+        for item_id in item_ids:
+            row = rows_by_id[item_id]
+            img_check = _check_instagram_image(
+                row["image_filename"], platforms_by_id.values()
+            )
+            if img_check is not None:
+                response, status = img_check
+                payload = response.get_json()
+                payload["item_id"] = item_id
+                return jsonify(payload), status
+
+        now = db.utc_now_iso()
+        created: List[Dict] = []
+        for item in items:
+            row = rows_by_id[int(item["id"])]
+            captions = item.get("captions") or {}
+            if not isinstance(captions, dict):
+                captions = {}
+            cur = conn.execute(
+                "INSERT INTO posts (image_filename, caption, scheduled_at, created_at) "
+                "VALUES (?, '', ?, ?)",
+                (row["image_filename"], str(item["scheduled_at"]), now),
+            )
+            post_id = cur.lastrowid
+            for account_id in account_ids:
+                platform = platforms_by_id[account_id]
+                conn.execute(
+                    "INSERT INTO post_targets (post_id, account_id, caption, status) "
+                    "VALUES (?, ?, ?, 'scheduled')",
+                    (post_id, account_id, str(captions.get(platform, ""))),
+                )
+            conn.execute(
+                "DELETE FROM ingest_items WHERE id = ?", (row["id"],)
+            )
+            created.append(fetch_post(conn, post_id))
+        conn.commit()
+        return jsonify(created), 201
+    finally:
+        conn.close()
+
+
+@app.route("/api/tagging/preview", methods=["POST"])
+def tagging_preview():
+    """Generate per-platform captions for an image without staging it.
+
+    Used by the single-post modal to pre-fill captions when a photo is
+    chosen. Returns ``{"captions": {...}, "error": null}`` on success, or
+    ``{"captions": {}, "error": msg}`` when the photo lacks usable metadata —
+    that's a normal outcome (captions get written by hand), not a request
+    failure, so it's still a 200.
+    """
+    image = request.files.get("image")
+    if image is None or not image.filename:
+        return jsonify({"error": "image file is required"}), 400
+    ext = Path(image.filename).suffix.lower()
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        return jsonify({"error": "unsupported image type"}), 400
+
+    with tempfile.NamedTemporaryFile(suffix=ext) as tmp:
+        image.save(tmp.name)
+        try:
+            captions = tagging.extract_captions(tmp.name)
+        except Exception as exc:  # noqa: BLE001 - missing metadata is expected.
+            return jsonify({"captions": {}, "error": str(exc)}), 200
+    return jsonify({"captions": captions, "error": None}), 200
 
 
 @app.route("/api/images/<path:filename>", methods=["GET"])

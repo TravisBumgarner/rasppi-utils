@@ -107,6 +107,20 @@ def init_db() -> None:
                 FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE
             );
 
+            -- Staging area for bulk ingestion: uploaded photos waiting for
+            -- review/approval before they become scheduled posts. Rows are
+            -- deleted on approve (converted to posts) or discard.
+            -- captions is a JSON object of per-platform caption text,
+            -- e.g. {"instagram": "...", "bluesky": "..."}.
+            CREATE TABLE IF NOT EXISTS ingest_items (
+                id INTEGER PRIMARY KEY,
+                image_filename TEXT NOT NULL,
+                captions TEXT NOT NULL DEFAULT '{}',
+                tag_status TEXT NOT NULL DEFAULT 'pending',
+                tag_error TEXT,
+                created_at TEXT NOT NULL
+            );
+
             -- Simple key/value app settings (values are JSON strings).
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,

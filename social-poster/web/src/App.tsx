@@ -3,6 +3,7 @@ import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { CalendarView } from './components/CalendarView';
 import { ActivityView } from './components/ActivityView';
 import { PostModal } from './components/PostModal';
+import { BulkAddModal } from './components/BulkAddModal';
 import { AccountsPanel } from './components/AccountsPanel';
 import { SettingsPanel } from './components/SettingsPanel';
 import type { Post } from './api/types';
@@ -16,6 +17,7 @@ export default function App() {
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [showAccounts, setShowAccounts] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showBulkAdd, setShowBulkAdd] = useState(false);
 
   return (
     <div className="app">
@@ -50,6 +52,13 @@ export default function App() {
             title="Settings"
           >
             ⚙
+          </button>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => setShowBulkAdd(true)}
+          >
+            ⇪ Bulk add
           </button>
           <button
             type="button"
@@ -93,6 +102,7 @@ export default function App() {
           onClose={() => setEditingPost(null)}
         />
       )}
+      {showBulkAdd && <BulkAddModal onClose={() => setShowBulkAdd(false)} />}
       {showAccounts && (
         <AccountsPanel onClose={() => setShowAccounts(false)} />
       )}

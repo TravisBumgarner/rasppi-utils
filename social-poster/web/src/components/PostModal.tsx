@@ -10,6 +10,7 @@ import {
   useSendPostNow,
 } from '../hooks/usePosts';
 import { useSettings } from '../hooks/useSettings';
+import { useGenerateCaptions } from '../hooks/useTagging';
 import {
   apiISOToDatetimeLocal,
   dateToDatetimeLocal,
@@ -55,6 +56,7 @@ export function PostModal({ onClose, post, initialScheduledAt }: PostModalProps)
   const editPost = useEditPost();
   const sendNow = useSendPostNow();
   const deletePost = useDeletePost();
+  const captionGen = useGenerateCaptions();
 
   // Image is required when creating; when editing we keep the existing image
   // unless a new one is uploaded, and we don't force the time back into the
@@ -182,6 +184,26 @@ export function PostModal({ onClose, post, initialScheduledAt }: PostModalProps)
     });
   };
 
+  // Run the tagging script on a newly-chosen photo and pre-fill any caption
+  // field the user hasn't written yet (never clobbers typed text).
+  const imageField = register('image');
+  const onImageChosen = (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file) {
+      return;
+    }
+    captionGen.mutate(file, {
+      onSuccess: ({ captions }) => {
+        if (captions.instagram && !getValues('captionInstagram')) {
+          setValue('captionInstagram', captions.instagram);
+        }
+        if (captions.bluesky && !getValues('captionBluesky')) {
+          setValue('captionBluesky', captions.bluesky);
+        }
+      },
+    });
+  };
+
   const buildCaptions = (values: FormValues): Captions => {
     const captions: Captions = {};
     if (selectedPlatforms.has('instagram')) {
@@ -274,9 +296,25 @@ export function PostModal({ onClose, post, initialScheduledAt }: PostModalProps)
                 <span className="field-label">
                   {isEdit ? 'Replace image (optional)' : 'Image *'}
                 </span>
-                <input type="file" accept="image/*" {...register('image')} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  {...imageField}
+                  onChange={(e) => {
+                    void imageField.onChange(e);
+                    onImageChosen(e.target.files);
+                  }}
+                />
                 {errors.image && (
                   <span className="field-error">{errors.image.message}</span>
+                )}
+                {captionGen.isPending && (
+                  <span className="muted">Generating captions…</span>
+                )}
+                {!captionGen.isPending && captionGen.data?.error && (
+                  <span className="muted">
+                    No captions from metadata: {captionGen.data.error}
+                  </span>
                 )}
               </label>
             </div>
@@ -339,7 +377,7 @@ export function PostModal({ onClose, post, initialScheduledAt }: PostModalProps)
                         {PLATFORM_LABEL[platform]} caption
                       </span>
                       <textarea
-                        rows={3}
+                        rows={6}
                         placeholder={`Write the ${PLATFORM_LABEL[platform]} caption (optional)…`}
                         {...register(CAPTION_FIELD[platform])}
                       />

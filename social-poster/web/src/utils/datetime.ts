@@ -40,6 +40,37 @@ export function formatHHMM(hhmm: string): string {
   return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
 }
 
+/**
+ * Parse a loosely-typed time ("9", "9:30", "930", "9:30 pm", "2130") into
+ * 'HH:MM' 24-hour form, or null if it isn't a valid time.
+ */
+export function parseTimeInput(text: string): string | null {
+  const cleaned = text.trim().toLowerCase();
+  const match = cleaned.match(/^(\d{1,2})(?::?(\d{2}))?\s*(a|am|p|pm)?$/);
+  if (!match) {
+    return null;
+  }
+  let hours = Number(match[1]);
+  const minutes = match[2] ? Number(match[2]) : 0;
+  const meridiem = match[3];
+  if (meridiem) {
+    if (hours < 1 || hours > 12) {
+      return null;
+    }
+    if (meridiem.startsWith('p') && hours !== 12) {
+      hours += 12;
+    }
+    if (meridiem.startsWith('a') && hours === 12) {
+      hours = 0;
+    }
+  }
+  if (hours > 23 || minutes > 59) {
+    return null;
+  }
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(hours)}:${pad(minutes)}`;
+}
+
 /** Day key (`YYYY-MM-DD`) in local time for grouping posts onto calendar cells. */
 export function localDayKey(date: Date): string {
   const y = date.getFullYear();

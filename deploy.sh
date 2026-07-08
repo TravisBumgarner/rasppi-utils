@@ -16,24 +16,31 @@
 # Usage:
 #   ./deploy.sh                       # defaults to motioncam@motioncam.local
 #   ./deploy.sh pi@raspberrypi.local  # custom user@host
+#   BRANCH=my-feature ./deploy.sh     # deploy a branch instead of the Pi's current one
 #
 set -euo pipefail
 
 TARGET="${1:-motioncam@motioncam.local}"
 REPO_URL="${REPO_URL:-https://github.com/TravisBumgarner/rasppi-utils.git}"
+BRANCH="${BRANCH:-}"
 
-echo "==> Deploying to ${TARGET}"
+echo "==> Deploying to ${TARGET}${BRANCH:+ (branch: ${BRANCH})}"
 
 # --- 1-4: code, deps, cloudflared, sync -------------------------------------
-ssh "${TARGET}" REPO_URL="${REPO_URL}" 'bash -s' <<'REMOTE'
+ssh "${TARGET}" REPO_URL="${REPO_URL}" BRANCH="${BRANCH}" 'bash -s' <<'REMOTE'
 set -euo pipefail
 cd "$HOME"
 
 echo "==> Repo"
 if [ -d rasppi-utils/.git ]; then
+  if [ -n "$BRANCH" ]; then
+    git -C rasppi-utils fetch origin "$BRANCH"
+    git -C rasppi-utils checkout "$BRANCH"
+  fi
   git -C rasppi-utils pull --ff-only
 else
   git clone "$REPO_URL" rasppi-utils
+  [ -z "$BRANCH" ] || git -C rasppi-utils checkout "$BRANCH"
 fi
 cd "$HOME/rasppi-utils"
 git log --oneline -1

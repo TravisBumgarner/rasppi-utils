@@ -1,12 +1,16 @@
 import type {
   Account,
   AddAccountResult,
+  ApproveIngestInput,
+  Captions,
   CreateAccountInput,
   CreatePostInput,
   EditPostInput,
+  IngestItem,
   LogEntry,
   Post,
   Settings,
+  TaggingPreview,
   UpdatePostInput,
 } from './types';
 
@@ -124,6 +128,55 @@ export function updatePost(
 
 export function deletePost(id: number): Promise<void> {
   return request<void>(`/posts/${id}`, { method: 'DELETE' });
+}
+
+// --- Bulk ingestion -----------------------------------------------------------
+
+export function getIngestItems(): Promise<IngestItem[]> {
+  return request<IngestItem[]>('/ingest');
+}
+
+/** Stage photos for review. Captions are filled in by the tagging script. */
+export function uploadIngestImages(files: File[]): Promise<IngestItem[]> {
+  const form = new FormData();
+  for (const file of files) {
+    form.append('images', file);
+  }
+  return request<IngestItem[]>('/ingest', { method: 'POST', body: form });
+}
+
+export function updateIngestItem(
+  id: number,
+  captions: Captions
+): Promise<IngestItem> {
+  return request<IngestItem>(`/ingest/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ captions }),
+  });
+}
+
+export function deleteIngestItem(id: number): Promise<void> {
+  return request<void>(`/ingest/${id}`, { method: 'DELETE' });
+}
+
+/** Convert approved staged items into scheduled posts (all-or-nothing). */
+export function approveIngest(input: ApproveIngestInput): Promise<Post[]> {
+  return request<Post[]>('/ingest/approve', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+}
+
+/** Run the tagging script on a photo (no staging) to pre-fill captions. */
+export function generateCaptions(image: File): Promise<TaggingPreview> {
+  const form = new FormData();
+  form.append('image', image);
+  return request<TaggingPreview>('/tagging/preview', {
+    method: 'POST',
+    body: form,
+  });
 }
 
 // --- Logs -------------------------------------------------------------------
