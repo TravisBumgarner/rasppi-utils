@@ -34,6 +34,11 @@ DATA_DIR = Path(
 )
 DEADLINES_PATH = DATA_DIR / "contest-deadlines.md"
 
+# Monthly self-contained HTML reports, browsable via the status-dashboard at
+# http://rasppi-utils.local/contests (it serves this directory).
+REPORTS_DIR = DATA_DIR / "reports"
+REPORTS_URL = os.environ.get("REPORTS_URL", "http://rasppi-utils.local/contests")
+
 # The repo copy only seeds the data dir on first run; after that the data-dir
 # file is the source of truth and is never committed.
 SEED_PATH = REPO_ROOT / "social-poster" / "config" / "contest-deadlines.md"
@@ -52,21 +57,30 @@ ALLOWED_TOOLS = "WebSearch,WebFetch,Read,Glob,Grep,Edit,Write"
 CLAUDE_TIMEOUT_SECONDS = 45 * 60
 
 
+def _report_path() -> Path:
+    return REPORTS_DIR / f"{date.today():%Y-%m}.html"
+
+
 def _prompt() -> str:
     """The headless instruction; the final reply becomes the notification."""
     return (
         f"Run /find-contests, but the deadlines file to read and update is "
-        f"{DEADLINES_PATH} — NOT the repo copy. After updating it, reply "
-        "with ONLY a short push-notification summary (max 600 characters, "
-        "plain text, no markdown): what's newly open, what closes within 6 "
-        "weeks, and anything newly rejected. If nothing changed, say so in "
-        "one sentence."
+        f"{DEADLINES_PATH} — NOT the repo copy. Then write a self-contained "
+        f"HTML report of the full current list to {_report_path()} — a "
+        "clean, phone-readable page: sections for open now / watchlist / "
+        "rejected, and per contest a link, subject areas, deadline, fee, "
+        "prize, and the TOS verdict (with the quoted clause for rejects). "
+        "No external assets. Finally, reply with ONLY a short "
+        "push-notification summary (max 600 characters, plain text, no "
+        "markdown): what's newly open, what closes within 6 weeks, and "
+        "anything newly rejected. If nothing changed, say so in one "
+        "sentence."
     )
 
 
 def ensure_deadlines_file() -> None:
-    """Create DATA_DIR and seed the deadlines file from the repo copy once."""
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    """Create the data dirs and seed the deadlines file from the repo copy once."""
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     if not DEADLINES_PATH.exists():
         DEADLINES_PATH.write_text(SEED_PATH.read_text(encoding="utf-8"),
                                   encoding="utf-8")
@@ -135,15 +149,12 @@ def main() -> None:
         )
         raise
 
-    status = (
-        f"Updated {DEADLINES_PATH}." if changed
-        else "No changes to the deadlines file."
-    )
+    status = "List updated." if changed else "No changes this month."
     notify(
         f"📸 Time for monthly contests — {month}",
-        f"{summary}\n\n{status}",
+        f"{summary}\n\n{status}\nBrowse: {REPORTS_URL}",
     )
-    print(f"contest-scout: done. {status}")
+    print(f"contest-scout: done. {status} Report: {_report_path()}")
 
 
 if __name__ == "__main__":

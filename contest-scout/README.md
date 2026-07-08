@@ -43,8 +43,8 @@ systemctl list-timers contest-scout.timer    # next scheduled run
 
 Schedule: 1st of each month, ~09:00 (`Persistent=true` catches a Pi that
 was off). Claude runs with a read/edit/web-research tool allowlist only.
-Read the current list any time with:
 
-```sh
-cat /var/lib/rasppi-utils/contest-scout/contest-deadlines.md
-```
+Each run also writes a self-contained HTML report to
+`/var/lib/rasppi-utils/contest-scout/reports/YYYY-MM.html`; the
+status-dashboard serves them at **<http://rasppi-utils.local/contests>** —
+that's the link in each notification.

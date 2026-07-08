@@ -24,6 +24,7 @@ def _use_tmp_data_dir(tmp_path, monkeypatch, seed="seeded contest list\n"):
     monkeypatch.setattr(sweep, "SEED_PATH", seed_path)
     monkeypatch.setattr(sweep, "DATA_DIR", data_dir)
     monkeypatch.setattr(sweep, "DEADLINES_PATH", data_dir / "contest-deadlines.md")
+    monkeypatch.setattr(sweep, "REPORTS_DIR", data_dir / "reports")
 
 
 def test_ensure_deadlines_file_seeds_from_repo_copy(tmp_path, monkeypatch):
@@ -40,9 +41,17 @@ def test_ensure_deadlines_file_never_overwrites(tmp_path, monkeypatch):
     assert sweep.DEADLINES_PATH.read_text() == "live edits from a previous sweep"
 
 
-def test_prompt_names_the_data_dir_file(tmp_path, monkeypatch):
+def test_prompt_names_the_data_dir_file_and_html_report(tmp_path, monkeypatch):
     _use_tmp_data_dir(tmp_path, monkeypatch)
-    assert str(sweep.DEADLINES_PATH) in sweep._prompt()
+    prompt = sweep._prompt()
+    assert str(sweep.DEADLINES_PATH) in prompt
+    assert str(sweep._report_path()) in prompt
+
+
+def test_ensure_creates_reports_dir(tmp_path, monkeypatch):
+    _use_tmp_data_dir(tmp_path, monkeypatch)
+    sweep.ensure_deadlines_file()
+    assert sweep.REPORTS_DIR.is_dir()
 
 
 def test_notify_posts_contact_form_json_and_truncates():
@@ -71,7 +80,8 @@ def test_main_reports_updated_file(tmp_path, monkeypatch):
         sweep.main()
     sent = post.call_args.kwargs["json"]
     assert "Sony WPA is open." in sent["message"]
-    assert "Updated" in sent["message"]
+    assert "List updated." in sent["message"]
+    assert "Browse: " in sent["message"]
 
 
 def test_main_reports_no_changes(tmp_path, monkeypatch):
