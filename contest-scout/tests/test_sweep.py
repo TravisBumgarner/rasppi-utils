@@ -16,25 +16,33 @@ def _proc(returncode=0, stdout="", stderr=""):
     return subprocess.CompletedProcess([], returncode, stdout, stderr)
 
 
-def test_commit_and_push_no_changes():
-    with patch.object(sweep, "_git", return_value=_proc(stdout="")) as git:
-        status = sweep.commit_and_push()
-    assert status == "No changes to contest-deadlines.md."
-    # Only the porcelain check ran — no commit, no push.
-    assert git.call_count == 1
+def _use_tmp_data_dir(tmp_path, monkeypatch, seed="seeded contest list\n"):
+    """Point the module at a throwaway DATA_DIR and repo-seed file."""
+    seed_path = tmp_path / "repo-copy.md"
+    seed_path.write_text(seed)
+    data_dir = tmp_path / "data"
+    monkeypatch.setattr(sweep, "SEED_PATH", seed_path)
+    monkeypatch.setattr(sweep, "DATA_DIR", data_dir)
+    monkeypatch.setattr(sweep, "DEADLINES_PATH", data_dir / "contest-deadlines.md")
 
 
-def test_commit_and_push_reports_stranded_commit_on_push_failure():
-    def fake_git(*args):
-        if args[0] == "status":
-            return _proc(stdout=" M social-poster/config/contest-deadlines.md")
-        if args[0] == "push":
-            return _proc(returncode=1, stderr="auth failed")
-        return _proc()
+def test_ensure_deadlines_file_seeds_from_repo_copy(tmp_path, monkeypatch):
+    _use_tmp_data_dir(tmp_path, monkeypatch)
+    sweep.ensure_deadlines_file()
+    assert sweep.DEADLINES_PATH.read_text() == "seeded contest list\n"
 
-    with patch.object(sweep, "_git", side_effect=fake_git):
-        status = sweep.commit_and_push()
-    assert "push failed" in status
+
+def test_ensure_deadlines_file_never_overwrites(tmp_path, monkeypatch):
+    _use_tmp_data_dir(tmp_path, monkeypatch)
+    sweep.ensure_deadlines_file()
+    sweep.DEADLINES_PATH.write_text("live edits from a previous sweep")
+    sweep.ensure_deadlines_file()
+    assert sweep.DEADLINES_PATH.read_text() == "live edits from a previous sweep"
+
+
+def test_prompt_names_the_data_dir_file(tmp_path, monkeypatch):
+    _use_tmp_data_dir(tmp_path, monkeypatch)
+    assert str(sweep.DEADLINES_PATH) in sweep._prompt()
 
 
 def test_notify_posts_contact_form_json_and_truncates():
@@ -50,9 +58,35 @@ def test_notify_posts_contact_form_json_and_truncates():
     resp.raise_for_status.assert_called_once()
 
 
-def test_failure_still_notifies():
-    with patch.object(sweep, "_git", return_value=_proc()), \
-         patch.object(sweep, "run_sweep", side_effect=RuntimeError("boom")), \
+def test_main_reports_updated_file(tmp_path, monkeypatch):
+    _use_tmp_data_dir(tmp_path, monkeypatch)
+
+    def fake_sweep():
+        sweep.DEADLINES_PATH.write_text("new contests found")
+        return "Sony WPA is open."
+
+    with patch.object(sweep, "run_sweep", side_effect=fake_sweep), \
+         patch("subprocess.run", return_value=_proc()), \
+         patch("requests.post") as post:
+        sweep.main()
+    sent = post.call_args.kwargs["json"]
+    assert "Sony WPA is open." in sent["message"]
+    assert "Updated" in sent["message"]
+
+
+def test_main_reports_no_changes(tmp_path, monkeypatch):
+    _use_tmp_data_dir(tmp_path, monkeypatch)
+    with patch.object(sweep, "run_sweep", return_value="Nothing new."), \
+         patch("subprocess.run", return_value=_proc()), \
+         patch("requests.post") as post:
+        sweep.main()
+    assert "No changes" in post.call_args.kwargs["json"]["message"]
+
+
+def test_failure_still_notifies(tmp_path, monkeypatch):
+    _use_tmp_data_dir(tmp_path, monkeypatch)
+    with patch.object(sweep, "run_sweep", side_effect=RuntimeError("boom")), \
+         patch("subprocess.run", return_value=_proc()), \
          patch("requests.post") as post:
         with pytest.raises(RuntimeError):
             sweep.main()
@@ -61,7 +95,7 @@ def test_failure_still_notifies():
     assert "boom" in sent["message"]
 
 
-def test_run_sweep_raises_on_claude_error(monkeypatch):
+def test_run_sweep_raises_on_claude_error():
     with patch("subprocess.run", return_value=_proc(returncode=2, stderr="bad token")):
         with pytest.raises(RuntimeError, match="bad token"):
             sweep.run_sweep()
