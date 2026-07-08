@@ -67,13 +67,24 @@ install_cloudflared() {
     log_info "cloudflared installed ($(cloudflared --version 2>/dev/null | head -1))"
 }
 
-# Set hostname so the Pi is reachable at <hostname>.local via mDNS
+# Set hostname so the Pi is reachable at <hostname>.local via mDNS.
+# Never fatal: a hostname hiccup must not abort the rest of the bootstrap.
 setup_hostname() {
-    log_info "Setting hostname to ${PI_HOSTNAME}..."
-    hostnamectl set-hostname "${PI_HOSTNAME}"
+    if [[ "$(hostname)" == "${PI_HOSTNAME}" ]]; then
+        log_info "Hostname already ${PI_HOSTNAME}"
+    else
+        log_info "Setting hostname to ${PI_HOSTNAME}..."
+        # hostnamed can time out on Pi OS (slow D-Bus activation); fall back
+        # to writing the files directly instead of dying on set -e.
+        if ! hostnamectl set-hostname "${PI_HOSTNAME}" 2>/dev/null; then
+            log_warn "hostnamectl failed/timed out — writing /etc/hostname directly"
+            echo "${PI_HOSTNAME}" > /etc/hostname
+            hostname "${PI_HOSTNAME}" || true
+        fi
+    fi
     sed -i "/127.0.1.1/d" /etc/hosts
     printf "127.0.1.1\t%s\n" "${PI_HOSTNAME}" >> /etc/hosts
-    systemctl enable --now avahi-daemon ssh
+    systemctl enable --now avahi-daemon ssh || log_warn "avahi/ssh enable failed (continuing)"
     log_info "Pi reachable at ${PI_HOSTNAME}.local"
 }
 
