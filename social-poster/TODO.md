@@ -73,14 +73,17 @@ Open Instagram and check each is alive / still featuring; drop from `tags.json` 
 
 ## Known gaps from the research (July 2026)
 
-- [ ] **Hashtag volume is deprioritized on Instagram (2026):** Mosseri has said
-      hashtags don't drive reach; posts with >5 tags may be *deprioritized*;
-      hashtag-follows were removed; caption keywords now drive search discovery.
-      Decide whether to cut `INSTAGRAM_TAG_LIMIT` from 30 to ~5 (priority hubs
-      first) and invest in descriptive keyword-rich captions + alt text instead.
-      The feature-hub strategy (getting reposted) is unaffected.
-- [ ] **No Bluesky 300-char handling:** publisher doesn't enforce the limit —
-      caption + big tag lists can exceed it. Add truncation/tag-budget logic.
+- [x] **Hashtag volume is deprioritized on Instagram (2026):** DONE — captions
+      now include every priority item (hubs are never dropped; @mentions don't
+      count toward the budget) plus a random draw of general tags up to 5
+      hashtags total. Note: photos stacking many hubs (film camera + film stock
+      + park + NatGeo) can exceed 5 priority hashtags by design. Still open:
+      invest in keyword-rich captions + alt text.
+- [x] **No Bluesky 300-char handling:** DONE — trailing tags are dropped until
+      the caption fits 300 chars. Since lists are trimmed from the end, keep
+      each `bluesky` list in tags.json ordered most-important-first (the long
+      film-camera lists eat the budget before place/subject tags get in —
+      consider slimming them).
 - [ ] **No feedback loop:** nothing records whether a hub ever features a post or
       which tag sets correlate with engagement. Consider a simple "featured by"
       log + per-post engagement snapshot so next year's audit isn't guesswork.

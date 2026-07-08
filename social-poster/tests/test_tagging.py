@@ -117,7 +117,7 @@ def test_film_camera_keyword_overrides_scanner_exif(tmp_path, monkeypatch):
     assert captions["bluesky"].splitlines()[-1] == "#pentaxK1000"
 
 
-def test_instagram_tags_capped_at_30(tmp_path, monkeypatch):
+def test_instagram_hashtags_capped_at_5_priority_first(tmp_path, monkeypatch):
     tree = {
         "Special": {
             "Many": {
@@ -136,8 +136,85 @@ def test_instagram_tags_capped_at_30(tmp_path, monkeypatch):
 
     tag_line = tagging.extract_captions(str(photo))["instagram"].splitlines()[-1]
     tags = tag_line.split(" ")
-    assert len(tags) == 30
+    assert len(tags) == tagging.INSTAGRAM_HASHTAG_LIMIT
     assert tags[0] == "#first"
+    assert all(t.startswith("#tag") for t in tags[1:])
+
+
+def test_instagram_general_tags_are_shuffled(tmp_path, monkeypatch):
+    tree = {
+        "Special": {
+            "Many": {
+                "general": [f"#tag{i}" for i in range(40)],
+                "priority": [],
+                "bluesky": [],
+            }
+        }
+    }
+    tags_path = tmp_path / "tags.json"
+    tags_path.write_text(json.dumps(tree))
+    monkeypatch.setattr(tagging, "TAGS_PATH", tags_path)
+
+    photo = tmp_path / "photo.jpg"
+    _write_photo(photo, ["cameracoffeewander|Special|Many"])
+
+    draws = {
+        tagging.extract_captions(str(photo))["instagram"].splitlines()[-1]
+        for _ in range(10)
+    }
+    assert len(draws) > 1  # 10 draws of 5-from-40 all identical ≈ impossible
+
+
+def test_instagram_priority_never_dropped_and_mentions_uncounted(
+        tmp_path, monkeypatch):
+    # 6 priority hashtags exceed the budget on their own: all kept, no general
+    # hashtags added. Mentions ride along without consuming the budget.
+    tree = {
+        "Special": {
+            "Hubs": {
+                "general": ["#extra1", "#extra2", "@generalmention"],
+                "priority": [f"#hub{i}" for i in range(6)] + ["@bighub"],
+                "bluesky": [],
+            }
+        }
+    }
+    tags_path = tmp_path / "tags.json"
+    tags_path.write_text(json.dumps(tree))
+    monkeypatch.setattr(tagging, "TAGS_PATH", tags_path)
+
+    photo = tmp_path / "photo.jpg"
+    _write_photo(photo, ["cameracoffeewander|Special|Hubs"])
+
+    tag_line = tagging.extract_captions(str(photo))["instagram"].splitlines()[-1]
+    tags = tag_line.split(" ")
+    assert tags[:7] == [f"#hub{i}" for i in range(6)] + ["@bighub"]
+    hashtags = [t for t in tags if t.startswith("#")]
+    assert hashtags == [f"#hub{i}" for i in range(6)]  # no general hashtags
+    assert "@generalmention" in tags  # mentions don't consume the budget
+
+
+def test_bluesky_caption_fits_300_chars(tmp_path, monkeypatch):
+    tree = {
+        "Special": {
+            "Wordy": {
+                "general": ["#a"],
+                "priority": [],
+                "bluesky": ["#keepme"] + [f"#verylongblueskytag{i}" for i in range(20)],
+            }
+        }
+    }
+    tags_path = tmp_path / "tags.json"
+    tags_path.write_text(json.dumps(tree))
+    monkeypatch.setattr(tagging, "TAGS_PATH", tags_path)
+
+    photo = tmp_path / "photo.jpg"
+    _write_photo(photo, ["cameracoffeewander|Special|Wordy"],
+                 description="An evening on the water. " * 6)
+
+    caption = tagging.extract_captions(str(photo))["bluesky"]
+    assert len(caption) <= tagging.BLUESKY_CHAR_LIMIT
+    # Trimmed from the end: the first (most important) tag survives.
+    assert "#keepme" in caption
 
 
 def test_real_tags_json_is_valid():

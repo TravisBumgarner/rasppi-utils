@@ -15,8 +15,12 @@ info. This module turns that into ready-to-review captions:
    tags; it is re-read on every extraction, so no restart is needed.
 3. Read EXIF for the gear/setup lines (camera, lens, shutter, aperture,
    focal length), with the same per-camera label overrides as the old tool.
-4. Render the caption template per platform: Instagram gets priority+general
-   tags (deduped, capped at 30); Bluesky gets its own tag set.
+4. Render the caption template per platform. Instagram gets every priority
+   item (feature hubs — hashtags and @mentions), then a random draw from the
+   general tags up to 5 hashtags total: Instagram deprioritizes posts with
+   more than ~5 hashtags (2026 guidance), and shuffling varies the tag mix
+   across posts. Bluesky gets its own tag set, trimmed from the end so the
+   caption fits the 300-character post limit.
 
 Bulk ingestion calls ``extract_captions`` once per uploaded image in a
 background thread. A raised ValueError marks that ingest item's tagging as
@@ -25,6 +29,7 @@ written by hand).
 """
 
 import json
+import random
 import re
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -40,7 +45,13 @@ TAGS_PATH = Path(__file__).parent.parent / "config" / "tags.json"
 # gallery organization) are ignored.
 TAG_ROOT = "cameracoffeewander"
 
-INSTAGRAM_TAG_LIMIT = 30
+# Instagram deprioritizes posts with more than ~5 hashtags; @mentions don't
+# count toward that. Priority items (feature hubs) are never dropped.
+INSTAGRAM_HASHTAG_LIMIT = 5
+
+# Bluesky rejects posts over 300 characters (graphemes; len() is close enough
+# for our ASCII tags). Tags are dropped from the end until the caption fits.
+BLUESKY_CHAR_LIMIT = 300
 
 _XMP_RE = re.compile(rb"<x:xmpmeta[^>]*>.*?</x:xmpmeta>", re.DOTALL)
 
@@ -250,8 +261,20 @@ def _generate_social_tags(keywords: List[str]) -> Dict[str, List[str]]:
     if errors:
         raise ValueError("; ".join(errors))
 
-    # Priority tags first (actively monitored), deduped, Instagram caps at 30.
-    instagram = list(dict.fromkeys(priority + general))[:INSTAGRAM_TAG_LIMIT]
+    # Every priority item is kept (feature hubs are the point); the remaining
+    # hashtag budget is filled with a random draw from the general tags so the
+    # mix varies post to post.
+    instagram = list(dict.fromkeys(priority))
+    hashtags = sum(1 for t in instagram if t.startswith("#"))
+    pool = [t for t in dict.fromkeys(general) if t not in instagram]
+    random.shuffle(pool)
+    for tag in pool:
+        if tag.startswith("@"):
+            instagram.append(tag)
+        elif hashtags < INSTAGRAM_HASHTAG_LIMIT:
+            instagram.append(tag)
+            hashtags += 1
+
     malformed = [t for t in instagram if t[:2] in ("##", "@@", "#@", "@#")]
     if malformed:
         raise ValueError(f"Malformed tag(s) in tag tree: {malformed}")
@@ -280,6 +303,21 @@ def _render_caption(fields: Dict[str, str], title: str, description: str,
         " ".join(tags),
     ]
     return "\n".join(line for line in lines if line)
+
+
+def _render_bluesky_caption(fields: Dict[str, str], title: str,
+                            description: str, tags: List[str]) -> str:
+    """Render for Bluesky, dropping trailing tags until the 300-char limit fits.
+
+    Tag lists in the tree are ordered most-important-first (feed triggers), so
+    the end is the right place to trim. If the caption is over the limit even
+    with no tags, it's hard-cut — Bluesky rejects longer posts outright.
+    """
+    for n in range(len(tags), -1, -1):
+        caption = _render_caption(fields, title, description, tags[:n])
+        if len(caption) <= BLUESKY_CHAR_LIMIT:
+            return caption
+    return caption[:BLUESKY_CHAR_LIMIT]
 
 
 # ---------------------------------------------------------------------------
@@ -312,6 +350,8 @@ def extract_captions(image_path: str) -> Dict[str, str]:
     _apply_film_camera_tags(fields, keywords)
 
     return {
-        platform: _render_caption(fields, title, description, tags[platform])
-        for platform in ("instagram", "bluesky")
+        "instagram": _render_caption(fields, title, description,
+                                     tags["instagram"]),
+        "bluesky": _render_bluesky_caption(fields, title, description,
+                                           tags["bluesky"]),
     }
