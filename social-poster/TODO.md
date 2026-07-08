@@ -49,19 +49,22 @@ All nested under the `cameracoffeewander` root; nothing existing was renamed.
 - [ ] `Place > NationalPark > GlacierCanada` (existing `Glacier` stays = Montana)
 - [ ] `SocialEvent > WorldCup2026`
 
-## In-app verification (couldn't be confirmed from the web)
+## In-app verification — DONE (July 2026, all applied to tags.json)
 
-Open Instagram and check each is alive / still featuring; drop from `tags.json` if dead:
-
-- [ ] `#mundusmag` (Portrait priority)
-- [ ] `#shadows_magazine` (Shadows priority)
-- [ ] `@milkyway_nightscape` / `#milkyway_nightscape_` (Stars priority)
-- [ ] `#dpsp_rainshots` (Storms general)
-- [ ] `@only.in.utah`, `@visitmoab` / `#visitmoab`, `#utahscanyoncountry` (Utah priority)
-- [ ] `@vermonttourism` (Vermont)
-- [ ] `@banff.national.park` (fan account — Parks Canada is now the primary)
-- [ ] `@mexico_fotografos` recency (75K, bio invites the tag, but recent activity was behind the login wall)
-- [ ] Confirm `@analogsunrise` is really dead (already removed — re-add if wrong)
+- [x] `#mundusmag` — REMOVED: content is mostly sexy women, wrong fit for Portrait.
+- [x] `#shadows_magazine` — verified, kept.
+- [x] `@milkyway_nightscape` / `#milkyway_nightscape_` — verified, kept.
+- [x] `#dpsp_rainshots` — REMOVED: account doesn't exist.
+- [x] `@only.in.utah`, `#utahscanyoncountry` — verified, kept. Moab fixed to
+      canonical casing `@VisitMoab` / `#VisitMoab`.
+- [x] `@vermonttourism` — verified, kept.
+- [x] `@banff.national.park` — verified, kept (secondary to Parks Canada).
+- [x] `@mexico_fotografos` — verified active, kept.
+- [x] `@analogsunrise` — ALIVE after all: `#analogsunrise` + `@analogsunrise`
+      re-added to all five film cameras.
+- [x] NEW: `@onlyinyourstate` added once at `Place > USA` — the tag tree now
+      supports buckets on parent nodes, inherited by every child, so it
+      applies to all US states without duplication.
 
 ## Bluesky actions (one-time)
 
@@ -76,8 +79,12 @@ Open Instagram and check each is alive / still featuring; drop from `tags.json` 
       (`image_alt`) and Instagram (`alt_text`, Graph API param added Mar 2025).
       Hand-written per-photo descriptions would still be better; revisit if a
       feed ever rejects the derived text.
-- [ ] Adopt the analog caption convention on Bluesky film posts:
-      `📷 <camera> / 🎞️ <film stock>` lines (keyword feeds match on it).
+- [x] Adopt the analog caption convention on film posts — DONE (July 2026):
+      captions render one `📷 <camera> / 🎞️ <film stock>` line **instead of**
+      the Gear/Setup lines whenever a film-camera or film-stock keyword is
+      present (scan EXIF settings were scanner noise anyway). Applied on both
+      platforms; film-stock display names live in `_FILM_STOCK_NAMES` in
+      `scripts/tagging.py` — add an entry there when adding a new FilmType.
 
 ## Known gaps from the research (July 2026)
 

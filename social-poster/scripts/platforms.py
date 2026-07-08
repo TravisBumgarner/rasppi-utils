@@ -229,7 +229,7 @@ def derive_alt_text(caption: str) -> str:
     kept = []
     for line in caption.splitlines():
         line = line.strip()
-        if not line or line.startswith(("The Gear -", "The Setup -")):
+        if not line or line.startswith(("The Gear -", "The Setup -", "📷", "🎞️")):
             continue
         if all(word.startswith(("#", "@")) for word in line.split()):
             continue

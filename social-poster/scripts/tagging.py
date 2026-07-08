@@ -15,6 +15,8 @@ info. This module turns that into ready-to-review captions:
    tags; it is re-read on every extraction, so no restart is needed.
 3. Read EXIF for the gear/setup lines (camera, lens, shutter, aperture,
    focal length), with the same per-camera label overrides as the old tool.
+   Film posts use the analog convention instead: one ``📷 <camera> /
+   🎞️ <film stock>`` line (Bluesky keyword feeds match on it).
 4. Render the caption template per platform. Instagram gets every priority
    item (feature hubs — hashtags and @mentions), then a random draw from the
    general tags up to 5 hashtags total: Instagram deprioritizes posts with
@@ -103,6 +105,29 @@ _FILM_CAMERA_TAGS: Dict[str, Dict[str, Optional[str]]] = {
         "camera": "Unknown Film Camera",
         "lens": "",
     },
+}
+
+# Display names for film-stock keywords, for the analog caption line
+# (`📷 <camera> / 🎞️ <film stock>` — Bluesky keyword feeds match on it).
+_FILM_STOCK_NAMES: Dict[str, str] = {
+    f"{TAG_ROOT}|FilmType|Across100": "Fuji Acros 100",
+    f"{TAG_ROOT}|FilmType|Ektar100": "Kodak Ektar 100",
+    f"{TAG_ROOT}|FilmType|FujiPro160": "Fuji Pro 160",
+    f"{TAG_ROOT}|FilmType|FujifilmXtra400": "Fujifilm Superia X-TRA 400",
+    f"{TAG_ROOT}|FilmType|Gold200": "Kodak Gold 200",
+    f"{TAG_ROOT}|FilmType|IlfordDelta3200": "Ilford Delta 3200",
+    f"{TAG_ROOT}|FilmType|IlfordHP5": "Ilford HP5 Plus",
+    f"{TAG_ROOT}|FilmType|Kentmere400": "Kentmere 400",
+    f"{TAG_ROOT}|FilmType|Kodak400TX": "Kodak Tri-X 400",
+    f"{TAG_ROOT}|FilmType|KodakTMax400": "Kodak T-Max 400",
+    f"{TAG_ROOT}|FilmType|KodakUltramax400": "Kodak UltraMax 400",
+    f"{TAG_ROOT}|FilmType|Lomography100": "Lomography Color Negative 100",
+    f"{TAG_ROOT}|FilmType|LomographyMetro": "LomoChrome Metropolis",
+    f"{TAG_ROOT}|FilmType|LomographyPurple": "LomoChrome Purple",
+    f"{TAG_ROOT}|FilmType|LomographyTurquoise": "LomoChrome Turquoise",
+    f"{TAG_ROOT}|FilmType|Portra160": "Kodak Portra 160",
+    f"{TAG_ROOT}|FilmType|Portra400": "Kodak Portra 400",
+    f"{TAG_ROOT}|FilmType|Portra800": "Kodak Portra 800",
 }
 
 
@@ -204,12 +229,21 @@ def _read_exif(image_path: str) -> Dict[str, str]:
 
 
 def _apply_film_camera_tags(fields: Dict[str, str], keywords: List[str]) -> None:
-    """Film-camera keywords name the real camera (scans carry scanner EXIF)."""
+    """Film-camera keywords name the real camera (scans carry scanner EXIF).
+
+    Also fills ``film_camera``/``film_stock`` so the caption template can
+    switch to the analog convention (a photo can carry a film-stock keyword
+    without a film-camera one, e.g. an unscanned hybrid workflow).
+    """
     for tag, override in _FILM_CAMERA_TAGS.items():
         if tag in keywords:
             for key, value in override.items():
                 if value is not None:
                     fields[key] = value
+            fields["film_camera"] = fields["camera"]
+    fields["film_stock"] = next(
+        (name for tag, name in _FILM_STOCK_NAMES.items() if tag in keywords), ""
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -220,14 +254,25 @@ def _load_tag_tree() -> Dict:
         return json.load(f)
 
 
-def _lookup(tree: Dict, parts: List[str]) -> Optional[Dict]:
-    """Walk the tag tree by hierarchy parts; return the leaf tag lists or None."""
+def _lookup(tree: Dict, parts: List[str]) -> Optional[List[Dict]]:
+    """Walk the tag tree by hierarchy parts; return every tag bucket on the
+    path, most-specific (leaf) first, or None if the path is unknown.
+
+    A bucket on an intermediate node (e.g. ``Place > USA``) applies to every
+    hierarchy beneath it — so a shared hub is written once at the parent
+    instead of duplicated into each child. The leaf itself must be a bucket.
+    """
     node = tree
+    buckets: List[Dict] = []
     for part in parts:
         if not isinstance(node, dict) or part not in node:
             return None
         node = node[part]
-    return node if isinstance(node, dict) and "general" in node else None
+        if isinstance(node, dict) and "general" in node:
+            buckets.append(node)
+    if not buckets or buckets[-1] is not node:
+        return None
+    return list(reversed(buckets))
 
 
 def _generate_social_tags(keywords: List[str]) -> Dict[str, List[str]]:
@@ -247,16 +292,17 @@ def _generate_social_tags(keywords: List[str]) -> Dict[str, List[str]]:
         if TAG_ROOT not in keyword:
             continue
         hierarchy = keyword.replace(f"{TAG_ROOT}|", "")
-        leaf = _lookup(tree, hierarchy.split("|"))
-        if leaf is None:
+        buckets = _lookup(tree, hierarchy.split("|"))
+        if buckets is None:
             errors.append(f"Unknown hierarchy tag: {hierarchy}")
             continue
-        if not leaf["general"] and not leaf["priority"]:
+        if not any(b["general"] or b["priority"] for b in buckets):
             errors.append(f"No tags or accounts found for hierarchy tag: {hierarchy}")
             continue
-        priority.extend(leaf["priority"])
-        general.extend(leaf["general"])
-        bluesky.extend(leaf.get("bluesky", []))
+        for bucket in buckets:
+            priority.extend(bucket["priority"])
+            general.extend(bucket["general"])
+            bluesky.extend(bucket.get("bluesky", []))
 
     if errors:
         raise ValueError("; ".join(errors))
@@ -287,19 +333,37 @@ def _generate_social_tags(keywords: List[str]) -> Dict[str, List[str]]:
 # ---------------------------------------------------------------------------
 def _render_caption(fields: Dict[str, str], title: str, description: str,
                     tags: List[str]) -> str:
-    gear = ", ".join(x for x in (fields["camera"], fields["lens"]) if x)
-    setup_parts = [
-        fields["shutter_speed"],
-        fields["aperture"],
-        f"{fields['focal_length']} focal length" if fields["focal_length"] else "",
-    ]
+    if fields.get("film_camera") or fields.get("film_stock"):
+        # Analog convention: one `📷 <camera> / 🎞️ <film stock>` line replaces
+        # the gear/setup lines (Bluesky keyword feeds match on it, and a
+        # scan's shutter/aperture EXIF is scanner noise anyway).
+        gear_lines = [
+            " / ".join(
+                part
+                for part in (
+                    f"📷 {fields['camera']}" if fields["camera"] else "",
+                    f"🎞️ {fields['film_stock']}" if fields.get("film_stock") else "",
+                )
+                if part
+            )
+        ]
+    else:
+        gear = ", ".join(x for x in (fields["camera"], fields["lens"]) if x)
+        setup_parts = [
+            fields["shutter_speed"],
+            fields["aperture"],
+            f"{fields['focal_length']} focal length" if fields["focal_length"] else "",
+        ]
+        gear_lines = [
+            f"The Gear - {gear}" if gear else "",
+            f"The Setup - {', '.join(p for p in setup_parts if p)}"
+            if any(setup_parts)
+            else "",
+        ]
     lines = [
         f"{title.strip()} {fields['date_taken']}".strip(),
         description.strip(),
-        f"The Gear - {gear}" if gear else "",
-        f"The Setup - {', '.join(p for p in setup_parts if p)}"
-        if any(setup_parts)
-        else "",
+        *gear_lines,
         " ".join(tags),
     ]
     return "\n".join(line for line in lines if line)

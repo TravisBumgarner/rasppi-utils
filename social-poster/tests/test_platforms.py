@@ -90,6 +90,15 @@ def test_derive_alt_text_empty_for_pure_tag_captions():
     assert platforms.derive_alt_text("#fog #mist @moodygrams") == ""
 
 
+def test_derive_alt_text_skips_analog_convention_line():
+    caption = (
+        "Fog over the lake\n"
+        "📷 Pentax K1000 / 🎞️ Kodak Gold 200\n"
+        "#film"
+    )
+    assert platforms.derive_alt_text(caption) == "Fog over the lake"
+
+
 def test_derive_alt_text_truncates():
     long_caption = "word " * 500
     assert len(platforms.derive_alt_text(long_caption)) <= platforms.ALT_TEXT_LIMIT

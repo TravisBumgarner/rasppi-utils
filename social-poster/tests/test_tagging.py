@@ -110,11 +110,87 @@ def test_film_camera_keyword_overrides_scanner_exif(tmp_path, monkeypatch):
     _write_photo(photo, ["cameracoffeewander|Camera|PentaxK1000"], with_exif=False)
 
     captions = tagging.extract_captions(str(photo))
-    assert "The Gear - Pentax K1000" in captions["instagram"]
+    # Film posts use the analog caption convention, not the gear/setup lines.
+    assert "📷 Pentax K1000" in captions["instagram"]
+    assert "The Gear" not in captions["instagram"]
     # Priority tags come before general ones.
     tag_line = captions["instagram"].splitlines()[-1]
     assert tag_line == "#analogsunrise #pentax"
     assert captions["bluesky"].splitlines()[-1] == "#pentaxK1000"
+
+
+def test_film_stock_keyword_renders_analog_caption_line(tmp_path, monkeypatch):
+    tree = {
+        "Camera": {
+            "PentaxK1000": {
+                "general": ["#pentax"],
+                "priority": [],
+                "bluesky": ["#pentaxK1000"],
+            }
+        },
+        "FilmType": {
+            "Gold200": {
+                "general": ["#kodakgold"],
+                "priority": [],
+                "bluesky": ["#film"],
+            }
+        },
+    }
+    tags_path = tmp_path / "tags.json"
+    tags_path.write_text(json.dumps(tree))
+    monkeypatch.setattr(tagging, "TAGS_PATH", tags_path)
+
+    photo = tmp_path / "scan.jpg"
+    _write_photo(
+        photo,
+        ["cameracoffeewander|Camera|PentaxK1000",
+         "cameracoffeewander|FilmType|Gold200"],
+        with_exif=False,
+    )
+
+    captions = tagging.extract_captions(str(photo))
+    for platform in ("instagram", "bluesky"):
+        assert "📷 Pentax K1000 / 🎞️ Kodak Gold 200" in captions[platform]
+        assert "The Gear" not in captions[platform]
+        assert "The Setup" not in captions[platform]
+
+
+def test_every_film_type_has_a_display_name():
+    """Each FilmType entry in the real tag tree renders a 🎞️ name."""
+    tree = json.loads(tagging.TAGS_PATH.read_text())
+    named = {tag.rsplit("|", 1)[1] for tag in tagging._FILM_STOCK_NAMES}
+    assert set(tree["FilmType"].keys()) <= named
+
+
+def test_parent_bucket_tags_inherited_by_children(tmp_path, monkeypatch):
+    # A bucket on Place > USA applies to every state beneath it, so shared
+    # hubs are written once at the parent. Leaf tags come first (they're more
+    # specific, and Bluesky trims from the end).
+    tree = {
+        "Place": {
+            "USA": {
+                "general": [],
+                "priority": ["@onlyinyourstate"],
+                "bluesky": [],
+                "Utah": {
+                    "State": {
+                        "general": ["#utah"],
+                        "priority": ["#VisitUtah"],
+                        "bluesky": ["#utah"],
+                    }
+                },
+            }
+        }
+    }
+    tags_path = tmp_path / "tags.json"
+    tags_path.write_text(json.dumps(tree))
+    monkeypatch.setattr(tagging, "TAGS_PATH", tags_path)
+
+    photo = tmp_path / "photo.jpg"
+    _write_photo(photo, ["cameracoffeewander|Place|USA|Utah|State"])
+
+    tag_line = tagging.extract_captions(str(photo))["instagram"].splitlines()[-1]
+    assert tag_line.split(" ") == ["#VisitUtah", "@onlyinyourstate", "#utah"]
 
 
 def test_instagram_hashtags_capped_at_5_priority_first(tmp_path, monkeypatch):
@@ -218,16 +294,21 @@ def test_bluesky_caption_fits_300_chars(tmp_path, monkeypatch):
 
 
 def test_real_tags_json_is_valid():
-    """The shipped tag tree parses and every leaf has the expected lists."""
+    """The shipped tag tree parses and every bucket has the expected lists.
+
+    A node may be a bucket AND have children (e.g. Place > USA carries hubs
+    inherited by every state), so validation recurses past buckets too.
+    """
 
     def walk(node):
         if "general" in node:
             assert isinstance(node["general"], list)
             assert isinstance(node["priority"], list)
             assert isinstance(node["bluesky"], list)
-            return
-        for child in node.values():
-            walk(child)
+        for key, child in node.items():
+            if key not in ("general", "priority", "bluesky"):
+                assert isinstance(child, dict)
+                walk(child)
 
     tree = json.loads(tagging.TAGS_PATH.read_text())
     assert set(tree.keys()) >= {"Camera", "Place", "PhotoType"}

@@ -84,6 +84,8 @@
         "#nikonphotographer"
       ],
       "priority": [
+        "#analogsunrise",
+        "@analogsunrise",
         "#shootfilmmag",
         "@shootfilmworld",
         "#RedditAnalog",
@@ -123,6 +125,8 @@
         "#olympuscamera"
       ],
       "priority": [
+        "#analogsunrise",
+        "@analogsunrise",
         "#shootfilmmag",
         "@shootfilmworld",
         "#RedditAnalog",
@@ -151,6 +155,8 @@
         "#pentaxk1000"
       ],
       "priority": [
+        "#analogsunrise",
+        "@analogsunrise",
         "#shootfilmmag",
         "@shootfilmworld",
         "#RedditAnalog",
@@ -192,6 +198,8 @@
         "#yashica"
       ],
       "priority": [
+        "#analogsunrise",
+        "@analogsunrise",
         "#shootfilmmag",
         "@shootfilmworld",
         "#RedditAnalog",
@@ -217,6 +225,8 @@
         "#35mmfilm"
       ],
       "priority": [
+        "#analogsunrise",
+        "@analogsunrise",
         "#shootfilmmag",
         "@shootfilmworld",
         "#RedditAnalog",
@@ -530,6 +540,11 @@
       }
     },
     "USA": {
+      "general": [],
+      "priority": [
+        "@onlyinyourstate"
+      ],
+      "bluesky": [],
       "Alaska": {
         "State": {
           "general": [
@@ -664,8 +679,8 @@
             "@visitutah",
             "#utahscanyoncountry",
             "@only.in.utah",
-            "@visitmoab",
-            "#visitmoab"
+            "@VisitMoab",
+            "#VisitMoab"
           ],
           "bluesky": [
             "#utah"
@@ -1118,9 +1133,7 @@
         "#portraitphotography",
         "#portrait"
       ],
-      "priority": [
-        "#mundusmag"
-      ],
+      "priority": [],
       "bluesky": [
         "#portraitphotography",
         "#portrait"
@@ -1170,8 +1183,7 @@
         "#stormphotography",
         "#stormchasers",
         "#stormclouds",
-        "#thunderstorms",
-        "#dpsp_rainshots"
+        "#thunderstorms"
       ],
       "priority": [],
       "bluesky": [

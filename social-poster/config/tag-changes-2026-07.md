@@ -10,7 +10,7 @@ so existing Lightroom keywords keep working. New keywords needed are listed in
 | Change | Why |
 |---|---|
 | `Special > NatGeoYourShot`: `#yourshotphotographer` → `#NatGeoYourShot` | NatGeo's own FAQ (Jan 2025): the year-round submission tag is #NatGeoYourShot. The old tag isn't monitored. |
-| Removed `@analogsunrise` / `#analogsunrise` from all film cameras | No trace of the account anywhere (searches + Reddit film community). Presumed dead. |
+| Removed `@analogsunrise` / `#analogsunrise` from all film cameras | No trace of the account anywhere (searches + Reddit film community). Presumed dead. **CORRECTION (in-app check, July 2026): alive — re-added to all five film cameras.** |
 | Removed the malformed `"#filmphotography 🎞️"` Bluesky entries (5 places) | The 🎞️ emoji is a caption convention on Bluesky (`📷 camera / 🎞️ film stock` lines), not part of a hashtag. The literal string was never a valid tag. |
 | Fixed `Camera > DJIMini3Pro` Bluesky list | It contained film-photography tags (copy-paste bug). Now: #dronephotography, #AerialPhotography, #dji. |
 | `Place > Mexico > Country`: dropped `#fotoexploramx` from priority | @fotoexplora.mx is a commercial photo-tour company, not a curator; no evidence tagged photos get featured. |
