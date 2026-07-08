@@ -71,6 +71,31 @@ def test_validate_instagram_image_rejects_too_tall(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# derive_alt_text — descriptive lines only, no gear/setup/tag lines
+# ---------------------------------------------------------------------------
+def test_derive_alt_text_keeps_title_and_description():
+    caption = (
+        "Fog over the lake June 2026\n"
+        "An early morning on the water.\n"
+        "The Gear - Pentax K1000, 50mm\n"
+        "The Setup - 1/250s, f/8\n"
+        "#moodygrams @moodygrams #fog"
+    )
+    assert platforms.derive_alt_text(caption) == (
+        "Fog over the lake June 2026 An early morning on the water."
+    )
+
+
+def test_derive_alt_text_empty_for_pure_tag_captions():
+    assert platforms.derive_alt_text("#fog #mist @moodygrams") == ""
+
+
+def test_derive_alt_text_truncates():
+    long_caption = "word " * 500
+    assert len(platforms.derive_alt_text(long_caption)) <= platforms.ALT_TEXT_LIMIT
+
+
+# ---------------------------------------------------------------------------
 # post_instagram — the two-step container/publish flow
 # ---------------------------------------------------------------------------
 def test_post_instagram_happy_path(tmp_path, monkeypatch):
@@ -84,20 +109,23 @@ def test_post_instagram_happy_path(tmp_path, monkeypatch):
     with patch("requests.post") as post, patch("requests.get") as get:
         post.side_effect = [container, publish]
         get.return_value = status
-        platforms.post_instagram(IG_CREDS, image, "hello world")
+        media_id = platforms.post_instagram(IG_CREDS, image, "hello world")
 
-    # Container creation uses the public URL + caption + token.
+    # Container creation uses the public URL + caption + alt text + token.
     create_call = post.call_args_list[0]
     assert create_call.args[0].endswith("/12345/media")
     assert create_call.kwargs["data"]["image_url"] == (
         "https://poster.example.com/api/images/p.jpg"
     )
     assert create_call.kwargs["data"]["caption"] == "hello world"
+    assert create_call.kwargs["data"]["alt_text"] == "hello world"
 
-    # Publish uses the creation id returned by the container call.
+    # Publish uses the creation id returned by the container call and its
+    # media id is returned for engagement tracking.
     publish_call = post.call_args_list[1]
     assert publish_call.args[0].endswith("/12345/media_publish")
     assert publish_call.kwargs["data"]["creation_id"] == "creation-1"
+    assert media_id == "media-9"
 
 
 def test_post_instagram_waits_for_processing(tmp_path, monkeypatch):
@@ -154,10 +182,22 @@ def test_dry_run_never_calls_platform(tmp_path, monkeypatch):
     with patch.object(platforms, "post_instagram") as ig, patch.object(
         platforms, "post_bluesky"
     ) as bsky:
-        platforms.post("instagram", IG_CREDS, image, "cap")
-        platforms.post("bluesky", {"handle": "h", "app_password": "p"}, image, "cap")
+        assert platforms.post("instagram", IG_CREDS, image, "cap") is None
+        assert (
+            platforms.post(
+                "bluesky", {"handle": "h", "app_password": "p"}, image, "cap"
+            )
+            is None
+        )
     ig.assert_not_called()
     bsky.assert_not_called()
+
+
+def test_post_returns_remote_id_from_platform(tmp_path, monkeypatch):
+    monkeypatch.delenv("DRY_RUN", raising=False)
+    image = _make_image(tmp_path / "p.jpg")
+    with patch.object(platforms, "post_instagram", return_value="media-1"):
+        assert platforms.post("instagram", IG_CREDS, image, "cap") == "media-1"
 
 
 def test_post_dispatches_to_instagram(tmp_path, monkeypatch):

@@ -142,6 +142,23 @@ def init_db() -> None:
                 caption TEXT,
                 attempted_at TEXT NOT NULL
             );
+
+            -- Append-only engagement snapshots per published target, fetched
+            -- from the platform APIs on demand. Denormalized and FK-free like
+            -- publish_log so history survives post/account deletion — the
+            -- point is a year-over-year record of what actually performed.
+            CREATE TABLE IF NOT EXISTS engagement_snapshots (
+                id INTEGER PRIMARY KEY,
+                post_id INTEGER,
+                target_id INTEGER,
+                platform TEXT NOT NULL,
+                username TEXT NOT NULL,
+                remote_id TEXT NOT NULL,
+                likes INTEGER,
+                comments INTEGER,
+                reposts INTEGER,
+                recorded_at TEXT NOT NULL
+            );
             """
         )
 
@@ -154,6 +171,19 @@ def init_db() -> None:
             conn.execute(
                 "UPDATE post_targets SET caption = "
                 "(SELECT caption FROM posts WHERE posts.id = post_targets.post_id)"
+            )
+
+        # The platform's id for the published item (Instagram media id /
+        # Bluesky at:// URI), captured at publish time so engagement can be
+        # fetched later. NULL for targets published before this column existed.
+        if "remote_id" not in _table_columns(conn, "post_targets"):
+            conn.execute("ALTER TABLE post_targets ADD COLUMN remote_id TEXT")
+
+        # Free-text log of feature-hub pickups (e.g. "@moodygrams 2026-07-12"),
+        # filled in by hand when a hub reposts/features the photo.
+        if "featured_by" not in _table_columns(conn, "posts"):
+            conn.execute(
+                "ALTER TABLE posts ADD COLUMN featured_by TEXT NOT NULL DEFAULT ''"
             )
 
         conn.commit()

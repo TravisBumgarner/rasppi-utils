@@ -807,6 +807,23 @@ body {
   padding-right: 4px;
 }
 
+/* Per-account engagement stats in the edit-post modal. */
+.engagement-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+
+.engagement-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 /* Narrow screens: stack to one column and let the body scroll as a whole. */
 @media (max-width: 700px) {
   .modal--post {

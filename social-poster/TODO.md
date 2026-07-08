@@ -6,11 +6,12 @@ Follow-ups from the July 2026 tag research
 
 ## New PhotoTypes (from gallery clustering + theme research)
 
-- [ ] Decide which of the 12 candidate PhotoTypes to add to `tags.json`
-      (recommended tags per theme in the theme research doc): Mountains, Forest,
-      Water, Fog, Winter, Dogs, Night, Hiking, StreetArt, Desert, Food, RoadTrip.
-- [ ] Add matching Lightroom keywords under `cameracoffeewander|PhotoType|<Name>`
-      for whichever are adopted.
+- [x] Decide which of the 12 candidate PhotoTypes to add to `tags.json` —
+      **DECIDED (July 2026): skipping all 12 for now.** The research stays in
+      [the theme doc](config/tag-research-themes-2026-07.md) with ready-to-use
+      tag lists if any theme is adopted later.
+- [ ] ~~Add matching Lightroom keywords under `cameracoffeewander|PhotoType|<Name>`~~
+      n/a while the themes are skipped.
 - [ ] Dogs features are submission-based, not tag-based: email your best 2-3 dog
       shots to dogs.instagram@gmail.com (@dogsofinstagram, 5M).
 - [ ] In-app: spend 10 min on #mountainphotography / #forestphotography /
@@ -66,8 +67,12 @@ Open Instagram and check each is alive / still featuring; drop from `tags.json` 
       #landscape/#wildlife/#astro/#nature; requires alt text, no AI.
 - [ ] Engage/follow **@bluesky.photography** (runs the curated Landscapes feed,
       active; selection is manual).
-- [ ] Add alt text to every Bluesky photo post (several curated feeds require it) —
-      consider making this a publisher feature.
+- [x] Add alt text to every Bluesky photo post — DONE (July 2026): the
+      publisher derives alt text from the caption's title/description lines
+      (gear/setup/tag lines dropped) and sends it to **both** Bluesky
+      (`image_alt`) and Instagram (`alt_text`, Graph API param added Mar 2025).
+      Hand-written per-photo descriptions would still be better; revisit if a
+      feed ever rejects the derived text.
 - [ ] Adopt the analog caption convention on Bluesky film posts:
       `📷 <camera> / 🎞️ <film stock>` lines (keyword feeds match on it).
 
@@ -77,24 +82,39 @@ Open Instagram and check each is alive / still featuring; drop from `tags.json` 
       now include every priority item (hubs are never dropped; @mentions don't
       count toward the budget) plus a random draw of general tags up to 5
       hashtags total. Note: photos stacking many hubs (film camera + film stock
-      + park + NatGeo) can exceed 5 priority hashtags by design. Still open:
-      invest in keyword-rich captions + alt text.
+      + park + NatGeo) can exceed 5 priority hashtags by design. Alt text is
+      now handled (derived from captions, sent to both platforms); still open:
+      invest in keyword-rich captions.
 - [x] **No Bluesky 300-char handling:** DONE — trailing tags are dropped until
       the caption fits 300 chars. Since lists are trimmed from the end, keep
       each `bluesky` list in tags.json ordered most-important-first (the long
       film-camera lists eat the budget before place/subject tags get in —
       consider slimming them).
-- [ ] **No feedback loop:** nothing records whether a hub ever features a post or
-      which tag sets correlate with engagement. Consider a simple "featured by"
-      log + per-post engagement snapshot so next year's audit isn't guesswork.
-- [ ] **Geotags not used:** Instagram location tags drive local discovery
-      (CDMX especially); publisher doesn't set them.
-- [ ] **Contests are an unexplored feature pipeline:** Cuartoscuro Concurso
-      Nacional (Mexican residents 2+ yrs eligible — 2026 closed Mar 30, watch for
-      2027; @cuartoscuromex is THE Mexican photojournalism institution — follow/tag
-      for CDMX street/documentary work), Banff Mountain Photo Essay + Signature
-      Image Search, National Park Photo Contest (Tamron), AlaskaTravel.com photo
-      contest, SkyPixel, Lomography Awards, Ilford annual. Build a deadlines list.
+- [x] **No feedback loop:** DONE (July 2026) — the publisher now captures each
+      published item's platform id (IG media id / Bluesky at:// URI), the edit
+      modal has a "Refresh stats" button that snapshots like/comment/repost
+      counts into `engagement_snapshots` (append-only, survives deletion), and
+      a free-text "Featured by" field logs hub pickups. Caveat: posts published
+      *before* this change have no remote id and can't be fetched. Optional
+      follow-up: cron `python -m scripts.engagement` (or POST
+      `/api/engagement/snapshot`) monthly so history accrues without clicking.
+- [ ] **Geotags not used — BLOCKED by API flavor (verified July 2026):** the
+      app uses the Instagram-Login flavor (`graph.instagram.com`), which does
+      not support `location_id` on media creation; location tagging (and the
+      Pages Search API needed to find location ids) requires migrating to the
+      Facebook-Login flavor: Facebook Page linked to the IG professional
+      account, Facebook OAuth (`instagram_basic`, `instagram_content_publish`,
+      `pages_show_list`, `pages_read_engagement`), calls via
+      `graph.facebook.com`. Standard Access usually suffices for posting to
+      your own account. Interim workaround: add the location by hand in the
+      Instagram app after publish. Decide if CDMX local discovery justifies
+      the migration.
+- [x] **Contests are an unexplored feature pipeline:** DONE (July 2026) —
+      deadlines list with verified dates, eligibility, and fit notes:
+      [config/contest-deadlines.md](config/contest-deadlines.md). Highlights:
+      Cuartoscuro ~Dec 2026 (best fit), Lomography TEN AND ONE ~autumn 2026,
+      Tamron's US-only National Park contest is INELIGIBLE from Mexico (but
+      Tamron Americas' own contest isn't).
 - [ ] **Bluesky depth:** only ~5 of 1,300+ photography feeds verified; no
       starter-pack/follow-graph strategy researched.
 - [ ] Stills-only strategy: IG reach in 2026 skews heavily to Reels — out of

@@ -8,6 +8,7 @@ import {
   useDeletePost,
   useEditPost,
   useSendPostNow,
+  useSnapshotEngagement,
 } from '../hooks/usePosts';
 import { useSettings } from '../hooks/useSettings';
 import { useGenerateCaptions } from '../hooks/useTagging';
@@ -41,6 +42,7 @@ interface FormValues {
   account_ids: number[];
   captionInstagram?: string;
   captionBluesky?: string;
+  featured_by?: string;
 }
 
 const CAPTION_FIELD: Record<Platform, 'captionInstagram' | 'captionBluesky'> = {
@@ -57,6 +59,13 @@ export function PostModal({ onClose, post, initialScheduledAt }: PostModalProps)
   const sendNow = useSendPostNow();
   const deletePost = useDeletePost();
   const captionGen = useGenerateCaptions();
+  const snapshot = useSnapshotEngagement();
+
+  // Published account records, preferring the fresh copy a snapshot returned
+  // (the parent's `post` prop may be stale until the posts query refetches).
+  const postedTargets = (snapshot.data?.post ?? post)?.targets.filter(
+    (t) => t.status === 'posted'
+  ) ?? [];
 
   // Image is required when creating; when editing we keep the existing image
   // unless a new one is uploaded, and we don't force the time back into the
@@ -70,6 +79,7 @@ export function PostModal({ onClose, post, initialScheduledAt }: PostModalProps)
           account_ids: z.array(z.number()).min(1, 'Select at least one account.'),
           captionInstagram: z.string().max(2200, 'Caption is too long.').optional(),
           captionBluesky: z.string().max(2200, 'Caption is too long.').optional(),
+          featured_by: z.string().max(2000, 'Too long.').optional(),
         })
         .superRefine((val, ctx) => {
           const hasNewImage =
@@ -115,6 +125,7 @@ export function PostModal({ onClose, post, initialScheduledAt }: PostModalProps)
       account_ids: post ? post.targets.map((t) => t.account_id) : [],
       captionInstagram: post?.captions.instagram ?? '',
       captionBluesky: post?.captions.bluesky ?? '',
+      featured_by: post?.featured_by ?? '',
     },
   });
 
@@ -223,7 +234,16 @@ export function PostModal({ onClose, post, initialScheduledAt }: PostModalProps)
 
     if (isEdit && post) {
       editPost.mutate(
-        { id: post.id, input: { image, captions, scheduled_at, account_ids: values.account_ids } },
+        {
+          id: post.id,
+          input: {
+            image,
+            captions,
+            scheduled_at,
+            account_ids: values.account_ids,
+            featured_by: values.featured_by ?? '',
+          },
+        },
         { onSuccess: () => onClose() }
       );
       return;
@@ -429,6 +449,77 @@ export function PostModal({ onClose, post, initialScheduledAt }: PostModalProps)
                     </span>
                   )}
               </div>
+
+              {isEdit && post && postedTargets.length > 0 && (
+                <div className="field">
+                  <div className="field-label-row">
+                    <span className="field-label">Engagement</span>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      disabled={
+                        snapshot.isPending ||
+                        !postedTargets.some((t) => t.remote_id)
+                      }
+                      onClick={() => snapshot.mutate(post.id)}
+                    >
+                      {snapshot.isPending ? 'Refreshing…' : '↻ Refresh stats'}
+                    </button>
+                  </div>
+                  <ul className="engagement-list">
+                    {postedTargets.map((t) => (
+                      <li key={t.id} className="engagement-row">
+                        <span>
+                          {t.username}{' '}
+                          <span className="muted">({t.platform})</span>
+                        </span>
+                        {t.engagement ? (
+                          <span>
+                            ❤️ {t.engagement.likes ?? '–'} · 💬{' '}
+                            {t.engagement.comments ?? '–'}
+                            {t.engagement.reposts != null && (
+                              <> · 🔁 {t.engagement.reposts}</>
+                            )}{' '}
+                            <span className="muted">
+                              as of {t.engagement.recorded_at.slice(0, 10)}
+                            </span>
+                          </span>
+                        ) : t.remote_id ? (
+                          <span className="muted">no stats yet — refresh</span>
+                        ) : (
+                          <span className="muted">
+                            published before stats tracking
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                  {snapshot.isError && (
+                    <span className="field-error">
+                      {snapshot.error.message}
+                    </span>
+                  )}
+                  {snapshot.data?.results.some((r) => !r.ok) && (
+                    <span className="field-error">
+                      {snapshot.data.results
+                        .filter((r) => !r.ok)
+                        .map((r) => `${r.username}: ${r.error}`)
+                        .join('; ')}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {isEdit && (
+                <label className="field">
+                  <span className="field-label">Featured by</span>
+                  <textarea
+                    rows={2}
+                    placeholder="Log feature-hub pickups, e.g. @moodygrams 2026-07-12"
+                    {...register('featured_by')}
+                  />
+                </label>
+              )}
             </div>
           </div>
 

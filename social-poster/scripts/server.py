@@ -27,10 +27,11 @@ from flask import (
 from werkzeug.utils import secure_filename
 
 try:
-    from . import config, db, platforms, publisher, tagging
+    from . import config, db, engagement, platforms, publisher, tagging
 except ImportError:  # Allows running directly as `python server.py`.
     import config
     import db
+    import engagement
     import platforms
     import publisher
     import tagging
@@ -75,12 +76,34 @@ def cors_preflight(_subpath):
 # ---------------------------------------------------------------------------
 # Serialization helpers
 # ---------------------------------------------------------------------------
+def _latest_engagement(conn, target_id: int) -> Optional[Dict]:
+    """Return the most recent engagement snapshot for a target, if any."""
+    row = conn.execute(
+        """
+        SELECT likes, comments, reposts, recorded_at
+        FROM engagement_snapshots
+        WHERE target_id = ?
+        ORDER BY recorded_at DESC, id DESC
+        LIMIT 1
+        """,
+        (target_id,),
+    ).fetchone()
+    if row is None:
+        return None
+    return {
+        "likes": row["likes"],
+        "comments": row["comments"],
+        "reposts": row["reposts"],
+        "recorded_at": row["recorded_at"],
+    }
+
+
 def serialize_targets(conn, post_id: int) -> List[Dict]:
     """Return the targets for a post, joined with account platform/username."""
     rows = conn.execute(
         """
         SELECT pt.id, pt.account_id, pt.caption, pt.status, pt.error,
-               pt.posted_at, a.platform, a.username
+               pt.posted_at, pt.remote_id, a.platform, a.username
         FROM post_targets pt
         JOIN accounts a ON a.id = pt.account_id
         WHERE pt.post_id = ?
@@ -98,6 +121,8 @@ def serialize_targets(conn, post_id: int) -> List[Dict]:
             "status": row["status"],
             "error": row["error"],
             "posted_at": row["posted_at"],
+            "remote_id": row["remote_id"],
+            "engagement": _latest_engagement(conn, row["id"]),
         }
         for row in rows
     ]
@@ -124,6 +149,7 @@ def serialize_post(conn, post_row) -> Dict:
         "scheduled_at": post_row["scheduled_at"],
         "image_url": "/api/images/" + post_row["image_filename"],
         "created_at": post_row["created_at"],
+        "featured_by": post_row["featured_by"],
         "targets": targets,
     }
 
@@ -635,7 +661,7 @@ def create_post():
 
 @app.route("/api/posts/<int:post_id>", methods=["PATCH"])
 def update_post(post_id: int):
-    """Update a post's scheduled_at and/or caption (drag-to-reschedule)."""
+    """Update a post's scheduled_at, caption, and/or featured_by."""
     body = request.get_json(silent=True) or {}
 
     conn = db.get_connection()
@@ -654,6 +680,9 @@ def update_post(post_id: int):
         if "caption" in body:
             fields.append("caption = ?")
             values.append(body["caption"])
+        if "featured_by" in body:
+            fields.append("featured_by = ?")
+            values.append(str(body["featured_by"]))
 
         if fields:
             values.append(post_id)
@@ -733,6 +762,15 @@ def edit_post(post_id: int):
             "UPDATE posts SET scheduled_at = ? WHERE id = ?",
             (scheduled_at, post_id),
         )
+
+        # Optional feature-hub log (only when the form sends the field, so
+        # older clients can't blank it).
+        featured_by = request.form.get("featured_by")
+        if featured_by is not None:
+            conn.execute(
+                "UPDATE posts SET featured_by = ? WHERE id = ?",
+                (featured_by, post_id),
+            )
 
         # Reconcile targets against the desired account set, preserving the
         # status of targets that are being kept.
@@ -907,6 +945,40 @@ def mark_post_sent(post_id: int):
         return jsonify(fetch_post(conn, post_id)), 200
     finally:
         conn.close()
+
+
+@app.route("/api/posts/<int:post_id>/engagement/snapshot", methods=["POST"])
+def snapshot_post_engagement(post_id: int):
+    """Fetch fresh engagement counts for one post's published targets.
+
+    Synchronous (like send-now): hits the platform APIs, appends snapshot
+    rows, and returns the post with each target's latest numbers. Targets
+    published before remote ids were captured are skipped silently.
+    """
+    conn = db.get_connection()
+    try:
+        post = conn.execute(
+            "SELECT id FROM posts WHERE id = ?", (post_id,)
+        ).fetchone()
+        if post is None:
+            return jsonify({"error": "post not found"}), 404
+    finally:
+        conn.close()
+
+    results = engagement.snapshot_targets(post_id)
+
+    conn = db.get_connection()
+    try:
+        return jsonify({"results": results, "post": fetch_post(conn, post_id)}), 200
+    finally:
+        conn.close()
+
+
+@app.route("/api/engagement/snapshot", methods=["POST"])
+def snapshot_all_engagement():
+    """Fetch fresh engagement counts for every published target."""
+    results = engagement.snapshot_targets()
+    return jsonify({"results": results}), 200
 
 
 @app.route("/api/posts/<int:post_id>", methods=["DELETE"])

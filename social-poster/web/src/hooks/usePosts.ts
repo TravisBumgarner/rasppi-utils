@@ -11,11 +11,13 @@ import {
   getPosts,
   sendPostNow,
   sendTargetNow,
+  snapshotPostEngagement,
   updatePost,
 } from '../api/client';
 import type {
   CreatePostInput,
   EditPostInput,
+  EngagementSnapshotResult,
   Post,
   UpdatePostInput,
 } from '../api/types';
@@ -100,6 +102,21 @@ export function useDeleteTarget() {
   const queryClient = useQueryClient();
   return useMutation<void, Error, number>({
     mutationFn: deleteTarget,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: POSTS_KEY });
+    },
+  });
+}
+
+/** Fetch fresh like/comment/repost counts for a post's published targets. */
+export function useSnapshotEngagement() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    { results: EngagementSnapshotResult[]; post: Post },
+    Error,
+    number
+  >({
+    mutationFn: snapshotPostEngagement,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: POSTS_KEY });
     },
