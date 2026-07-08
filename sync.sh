@@ -126,12 +126,22 @@ prompt_for_config() {
     echo "=========================================="
     echo ""
 
-    # Read the example file and prompt for each variable
+    # Read the example file and prompt for each variable. The comment block
+    # directly above a variable is shown with its prompt — that's where the
+    # .env.example explains where the value comes from.
     local temp_env=""
+    local pending_comments=""
     while IFS= read -r line || [[ -n "$line" ]]; do
-        # Preserve comments
-        if [[ "$line" =~ ^#.* ]] || [[ -z "$line" ]]; then
+        # Preserve comments (and collect them for the next prompt)
+        if [[ "$line" =~ ^#.* ]]; then
             temp_env+="${line}"$'\n'
+            pending_comments+="${line}"$'\n'
+            continue
+        fi
+        # A blank line ends any comment block
+        if [[ -z "$line" ]]; then
+            temp_env+="${line}"$'\n'
+            pending_comments=""
             continue
         fi
 
@@ -140,6 +150,11 @@ prompt_for_config() {
             local var_name="${BASH_REMATCH[1]}"
             local default_value="${BASH_REMATCH[2]}"
 
+            if [[ -n "$pending_comments" ]]; then
+                echo ""
+                echo -n "$pending_comments"
+            fi
+            pending_comments=""
             echo "Enter value for ${var_name}"
             echo "  (default: ${default_value})"
             read -p "  > " user_value < /dev/tty

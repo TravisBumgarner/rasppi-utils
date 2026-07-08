@@ -105,6 +105,8 @@ across sources 1, 3, 4 instead.
    was rejected and why. Lead with deadlines that need action soon.
 
 Automation: the `contest-scout` utility runs this skill headless on the Pi
-monthly (systemd timer), commits the result, and sends a Pushover nudge —
-see `contest-scout/README.md`. When running headless, the final reply should
-be the short notification summary the runner asks for.
+monthly (systemd timer) and sends the summary through the contact-form
+relay — see `contest-scout/README.md`. Its prompt names a deadlines file in
+the Pi's data dir; when a target file is given, maintain THAT file instead
+of the repo copy, and make the final reply the short notification summary
+the runner asks for.

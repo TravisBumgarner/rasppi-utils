@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, send_from_directory
 
 app = Flask(__name__)
 
@@ -16,6 +16,13 @@ app = Flask(__name__)
 SCRIPT_DIR = Path(__file__).parent.parent.parent
 UTILITIES_CONF = SCRIPT_DIR / "utilities.conf"
 CONFIG_DIR = Path("/etc/rasppi-utils")
+
+# Monthly HTML contest reports written by contest-scout's sweep.
+CONTEST_REPORTS_DIR = Path(
+    os.environ.get(
+        "CONTEST_REPORTS_DIR", "/var/lib/rasppi-utils/contest-scout/reports"
+    )
+)
 
 # Utilities that expose a web UI. The port is read from the utility's installed
 # .env (falling back to default_port); scheme is fixed per utility. Utilities
@@ -492,6 +499,32 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 def dashboard():
     """Serve the HTML dashboard."""
     return DASHBOARD_HTML
+
+
+@app.route("/contests")
+@app.route("/contests/")
+def contest_reports_index():
+    """List contest-scout's monthly HTML reports, newest first."""
+    reports = sorted(CONTEST_REPORTS_DIR.glob("*.html"), reverse=True)
+    if not reports:
+        return (
+            "<h1>No contest reports yet</h1>"
+            "<p>The first one appears after contest-scout's next run.</p>"
+        )
+    items = "".join(
+        f'<li><a href="/contests/{r.name}">{r.stem}</a></li>' for r in reports
+    )
+    return (
+        "<!doctype html><title>Contest reports</title>"
+        "<h1>Contest reports</h1>"
+        f"<ul>{items}</ul>"
+    )
+
+
+@app.route("/contests/<path:filename>")
+def contest_report(filename: str):
+    """Serve one monthly contest report (send_from_directory blocks traversal)."""
+    return send_from_directory(str(CONTEST_REPORTS_DIR), filename)
 
 
 @app.route("/api/status")

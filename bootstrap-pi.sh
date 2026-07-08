@@ -140,36 +140,11 @@ setup_contest_scout_deps() {
         npm install -g @anthropic-ai/claude-code
     fi
 
-    # The service runs as root against a repo it doesn't own — allowlist it.
+    # The sweep does a read-only 'git pull' as root against a repo it doesn't
+    # own — allowlist it. (It never commits or pushes; the deadlines file it
+    # maintains lives unversioned in /var/lib/rasppi-utils/contest-scout.)
     if ! git config --global --get-all safe.directory 2>/dev/null | grep -qx "${SCRIPT_DIR}"; then
         git config --global --add safe.directory "${SCRIPT_DIR}"
-    fi
-
-    # Push auth: the monthly sweep commits and pushes from this clone.
-    if GIT_TERMINAL_PROMPT=0 git -C "${SCRIPT_DIR}" push --dry-run >/dev/null 2>&1; then
-        log_info "git push auth OK"
-        return 0
-    fi
-    log_warn "git push isn't authorized from this clone (contest-scout needs it)."
-    if [[ -t 0 ]]; then
-        read -rp "GitHub username (blank to skip): " gh_user
-        if [[ -n "${gh_user}" ]]; then
-            read -rsp "GitHub personal access token (repo scope): " gh_token; echo
-            git config --global credential.helper store
-            touch /root/.git-credentials
-            chmod 600 /root/.git-credentials
-            # Replace any stale github.com entry so re-runs update the token.
-            sed -i '/github.com/d' /root/.git-credentials
-            echo "https://${gh_user}:${gh_token}@github.com" >> /root/.git-credentials
-            if GIT_TERMINAL_PROMPT=0 git -C "${SCRIPT_DIR}" push --dry-run >/dev/null 2>&1; then
-                log_info "git push auth configured"
-            else
-                log_warn "Stored the token but a dry-run push still fails — check the PAT's repo access."
-            fi
-        fi
-    else
-        log_warn "Non-interactive shell — configure it later with a PAT:"
-        log_warn "  sudo git config --global credential.helper store && sudo git -C ${SCRIPT_DIR} push"
     fi
 }
 
