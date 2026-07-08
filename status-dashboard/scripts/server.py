@@ -25,19 +25,24 @@ CONTEST_REPORTS_DIR = Path(
 )
 
 # Utilities that expose a web UI. The port is read from the utility's installed
-# .env (falling back to default_port); scheme is fixed per utility. Utilities
-# absent here (e.g. supabase-keepalive, or the dashboard itself) get no link.
+# .env (falling back to default_port); scheme is fixed per utility. A "path"
+# entry means the page is served by this dashboard itself (same host/port).
+# Utilities absent here (e.g. supabase-keepalive) get no link.
 WEB_UIS = {
     "social-poster": {"scheme": "http", "default_port": 5050},
     "pixels64": {"scheme": "https", "default_port": 8443},
+    # Monthly contest reports, served by this dashboard at /contests.
+    "contest-scout": {"path": "/contests"},
 }
 
 
 def get_web_ui(utility: str) -> Optional[dict]:
-    """Return {scheme, port} for a utility's web UI, or None if it has none."""
+    """Return {scheme, port} or {path} for a utility's web UI, or None."""
     spec = WEB_UIS.get(utility)
     if not spec:
         return None
+    if "path" in spec:
+        return {"path": spec["path"]}
     port = spec["default_port"]
     env_file = CONFIG_DIR / utility / ".env"
     if env_file.exists():
@@ -354,6 +359,12 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             return 'unknown';
         }
 
+        // A web UI is either a path on this dashboard or its own host:port.
+        function webUrl(web) {
+            if (web.path) return web.path;
+            return `${web.scheme}://${location.hostname}:${web.port}/`;
+        }
+
         async function fetchStatus() {
             try {
                 const response = await fetch('/api/status');
@@ -373,7 +384,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                     <div class="utility-header">
                         <span class="utility-name">${u.name}</span>
                         <div class="card-actions">
-                            ${u.web ? `<a class="open-btn" href="${u.web.scheme}://${location.hostname}:${u.web.port}/" target="_blank" rel="noopener" onclick="event.stopPropagation()">Open &#8599;</a>` : ''}
+                            ${u.web ? `<a class="open-btn" href="${webUrl(u.web)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Open &#8599;</a>` : ''}
                             <button class="run-btn" onclick="runUtility(event, '${u.name}')">Run Now</button>
                         </div>
                     </div>
