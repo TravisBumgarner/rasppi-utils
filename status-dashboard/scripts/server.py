@@ -24,6 +24,13 @@ CONTEST_REPORTS_DIR = Path(
     )
 )
 
+# The deadlines list itself. Viewing has zero dependency on the sweep job:
+# fall back to the copy shipped in the repo until a sweep has ever run.
+CONTEST_DEADLINES_LIVE = CONTEST_REPORTS_DIR.parent / "contest-deadlines.md"
+CONTEST_DEADLINES_REPO = (
+    SCRIPT_DIR / "social-poster" / "config" / "contest-deadlines.md"
+)
+
 # Utilities that expose a web UI. The port is read from the utility's installed
 # .env (falling back to default_port); scheme is fixed per utility. A "path"
 # entry means the page is served by this dashboard itself (same host/port).
@@ -512,23 +519,70 @@ def dashboard():
     return DASHBOARD_HTML
 
 
+CONTESTS_PAGE = """<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Photo contests</title>
+<style>
+  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+         sans-serif; background: #1a1a2e; color: #eee; margin: 0;
+         padding: 24px; line-height: 1.55; }}
+  main {{ max-width: 960px; margin: 0 auto; }}
+  h1, h2, h3 {{ color: #00d9ff; }}
+  a {{ color: #00d9ff; }}
+  .meta {{ color: #9aa; font-size: 13px; margin-bottom: 20px; }}
+  table {{ border-collapse: collapse; width: 100%; margin: 12px 0; }}
+  th, td {{ border: 1px solid #333355; padding: 8px 10px; text-align: left;
+           vertical-align: top; }}
+  th {{ background: #23233d; }}
+  .tablewrap {{ overflow-x: auto; }}
+  .reports {{ margin-top: 32px; border-top: 1px solid #333355;
+             padding-top: 16px; }}
+</style></head><body><main>
+<h1>Photo contests</h1>
+<p class="meta">{source_note}</p>
+<div class="tablewrap">{content}</div>
+<div class="reports"><h2>Monthly sweep reports</h2>{reports}</div>
+</main></body></html>"""
+
+
 @app.route("/contests")
 @app.route("/contests/")
 def contest_reports_index():
-    """List contest-scout's monthly HTML reports, newest first."""
+    """Render the contest deadlines list + link the monthly sweep reports.
+
+    Works with zero sweep runs: falls back to the repo's copy of the list.
+    The markdown renderer is optional — plain <pre> if it isn't installed.
+    """
+    if CONTEST_DEADLINES_LIVE.exists():
+        source = CONTEST_DEADLINES_LIVE
+        source_note = "Live copy — updated by contest-scout's monthly sweep."
+    else:
+        source = CONTEST_DEADLINES_REPO
+        source_note = "Repo copy — no sweep has run yet; this is the seed list."
+
+    try:
+        text = source.read_text(encoding="utf-8")
+    except OSError:
+        text = "Deadlines file not found."
+
+    try:
+        from markdown import markdown
+
+        content = markdown(text, extensions=["tables"])
+    except ImportError:
+        content = f"<pre style='white-space:pre-wrap'>{text}</pre>"
+
     reports = sorted(CONTEST_REPORTS_DIR.glob("*.html"), reverse=True)
-    if not reports:
-        return (
-            "<h1>No contest reports yet</h1>"
-            "<p>The first one appears after contest-scout's next run.</p>"
-        )
-    items = "".join(
-        f'<li><a href="/contests/{r.name}">{r.stem}</a></li>' for r in reports
-    )
-    return (
-        "<!doctype html><title>Contest reports</title>"
-        "<h1>Contest reports</h1>"
-        f"<ul>{items}</ul>"
+    if reports:
+        report_links = "<ul>" + "".join(
+            f'<li><a href="/contests/{r.name}">{r.stem}</a></li>' for r in reports
+        ) + "</ul>"
+    else:
+        report_links = "<p class='meta'>None yet — one appears after each monthly run.</p>"
+
+    return CONTESTS_PAGE.format(
+        source_note=source_note, content=content, reports=report_links
     )
 
 
