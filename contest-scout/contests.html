@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Photo contests — July 2026</title>
+</head>
+<body>
+<style>
+  :root {
+    --paper: #F6F5F1;
+    --paper-2: #EFEDE7;
+    --ink: #211F1B;
+    --ink-2: #6B675E;
+    --line: #DAD7CE;
+    --accent: #2F6690;
+    --accent-ink: #FFFFFF;
+    --good: #3E7C4F;
+    --good-bg: #E4EEE6;
+    --warn: #9A7B2D;
+    --warn-bg: #F2EAD4;
+    --bad: #AE4436;
+    --bad-bg: #F4E1DD;
+    --mute-bg: #E9E7E0;
+    --mark: #F5D9D4;
+    --display: "Futura", "Avenir Next", "Century Gothic", "Trebuchet MS", sans-serif;
+    --body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #191817; --paper-2: #211F1D; --ink: #E8E5DE; --ink-2: #9B968B;
+      --line: #35322D; --accent: #7FA8C9; --accent-ink: #10141A;
+      --good: #7CB88A; --good-bg: #223428; --warn: #C9A84C; --warn-bg: #34301E;
+      --bad: #D07A6E; --bad-bg: #3A2521; --mute-bg: #26241F; --mark: #4A2A25;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #191817; --paper-2: #211F1D; --ink: #E8E5DE; --ink-2: #9B968B;
+    --line: #35322D; --accent: #7FA8C9; --accent-ink: #10141A;
+    --good: #7CB88A; --good-bg: #223428; --warn: #C9A84C; --warn-bg: #34301E;
+    --bad: #D07A6E; --bad-bg: #3A2521; --mute-bg: #26241F; --mark: #4A2A25;
+  }
+  :root[data-theme="light"] {
+    --paper: #F6F5F1; --paper-2: #EFEDE7; --ink: #211F1B; --ink-2: #6B675E;
+    --line: #DAD7CE; --accent: #2F6690; --accent-ink: #FFFFFF;
+    --good: #3E7C4F; --good-bg: #E4EEE6; --warn: #9A7B2D; --warn-bg: #F2EAD4;
+    --bad: #AE4436; --bad-bg: #F4E1DD; --mute-bg: #E9E7E0; --mark: #F5D9D4;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--body); font-size: 15px; line-height: 1.55;
+  }
+  a { color: var(--accent); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .wrap { max-width: 1020px; margin: 0 auto; padding: 40px 24px 88px; }
+
+  /* ---- header ---- */
+  .eyebrow {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-2); margin: 0 0 10px;
+  }
+  h1 {
+    font-family: var(--display); font-size: clamp(28px, 4.5vw, 40px);
+    font-weight: 600; letter-spacing: -0.01em; margin: 0 0 6px; text-wrap: balance;
+  }
+  .subtitle { color: var(--ink-2); margin: 0; max-width: 62ch; }
+
+  /* ---- stat strip ---- */
+  .stats {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+    background: var(--line); border: 1px solid var(--line);
+    margin: 28px 0 8px;
+  }
+  .stat { background: var(--paper-2); padding: 14px 16px; }
+  .stat b {
+    display: block; font-family: var(--display); font-size: 26px; font-weight: 600;
+    font-variant-numeric: tabular-nums; line-height: 1.1;
+  }
+  .stat span {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--ink-2);
+  }
+  .stat.s-soon b { color: var(--warn); }
+  .stat.s-bad b { color: var(--bad); }
+
+  /* ---- filters ---- */
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 4px; }
+  .filters .lbl {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--ink-2); align-self: center; margin-right: 2px;
+  }
+  .chipbtn {
+    font-family: var(--mono); font-size: 12px; padding: 4px 12px;
+    border: 1px solid var(--line); border-radius: 999px;
+    background: var(--paper-2); color: var(--ink); cursor: pointer;
+  }
+  .chipbtn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  /* ---- sections ---- */
+  h2 {
+    font-family: var(--display); font-size: 19px; font-weight: 600;
+    margin: 44px 0 4px; display: flex; align-items: baseline; gap: 10px;
+  }
+  h2 .count { font-family: var(--mono); font-size: 12px; color: var(--ink-2); font-weight: 400; }
+  .section-note { color: var(--ink-2); font-size: 13.5px; margin: 0 0 16px; max-width: 70ch; }
+
+  /* ---- contest rows ---- */
+  .row {
+    display: grid; grid-template-columns: 4px 1fr 250px; gap: 0 22px;
+    border: 1px solid var(--line); background: var(--paper-2);
+    margin-bottom: 12px; padding: 0 18px 0 0;
+  }
+  .row[hidden] { display: none; }
+  .stripe { background: var(--mute-bg); }
+  .row[data-verdict="clean"]   .stripe { background: var(--good); }
+  .row[data-verdict="caution"] .stripe { background: var(--warn); }
+  .row[data-verdict="reject"]  .stripe { background: var(--bad); }
+  .main { padding: 16px 0 16px 18px; min-width: 0; }
+  .main h3 { font-family: var(--display); font-size: 16.5px; font-weight: 600; margin: 0 0 2px; }
+  .main h3 a { color: var(--ink); text-decoration-color: var(--accent); text-underline-offset: 3px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 8px; padding: 0; list-style: none; }
+  .chips li {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--ink-2);
+    border: 1px solid var(--line); border-radius: 3px; padding: 1px 7px;
+  }
+  .fit { margin: 0; font-size: 13.5px; color: var(--ink-2); max-width: 60ch; }
+
+  .tos-quote {
+    margin: 10px 0 2px; padding: 10px 14px; border-left: 3px solid var(--bad);
+    background: var(--paper); font-family: var(--mono); font-size: 12px;
+    line-height: 1.6; color: var(--ink); overflow-x: auto;
+  }
+  .tos-quote mark { background: var(--mark); color: inherit; padding: 0 2px; font-weight: 700; }
+  .tos-quote .src { display: block; margin-top: 6px; color: var(--ink-2); font-size: 11px; }
+
+  /* ---- facts column ---- */
+  .facts {
+    margin: 0; padding: 16px 0; align-self: start;
+    display: grid; grid-template-columns: auto 1fr; gap: 5px 14px; align-content: start;
+    font-size: 13px;
+  }
+  .facts dt {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--ink-2); padding-top: 2px;
+  }
+  .facts dd { margin: 0; font-variant-numeric: tabular-nums; }
+  .pill {
+    display: inline-block; font-family: var(--mono); font-size: 11px;
+    padding: 1px 9px; border-radius: 999px; font-weight: 700;
+  }
+  .pill.clean   { background: var(--good-bg); color: var(--good); }
+  .pill.caution { background: var(--warn-bg); color: var(--warn); }
+  .pill.reject  { background: var(--bad-bg);  color: var(--bad); }
+  .pill.unv     { background: var(--mute-bg); color: var(--ink-2); font-weight: 400; }
+  .due-soon {
+    display: inline-block; background: var(--warn-bg); color: var(--warn);
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    padding: 1px 8px; border-radius: 3px;
+  }
+
+  footer {
+    margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--line);
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-2);
+  }
+
+  @media (max-width: 720px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .row { grid-template-columns: 4px 1fr; padding-right: 0; }
+    .facts { grid-column: 2; padding: 0 18px 16px; }
+    .main { padding-right: 18px; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .row { transition: border-color 120ms ease; }
+    .row:hover { border-color: var(--accent); }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">/find-contests · seed list · July 8, 2026</p>
+    <h1>Contest Sweep — July 2026</h1>
+    <p class="subtitle">
+      Photography contests filtered for a film / landscape / street photographer in
+      Mexico City. Every deadline and rights clause verified on the organizer's own
+      rules page — rejected contests keep the exact sentence that sank them.
+    </p>
+  </header>
+
+  <div class="stats" role="group" aria-label="Sweep summary">
+    <div class="stat"><b>4</b><span>Open now</span></div>
+    <div class="stat s-soon"><b>2</b><span>Close within 6 weeks</span></div>
+    <div class="stat"><b>6</b><span>On the watchlist</span></div>
+    <div class="stat s-bad"><b>9</b><span>Rejected</span></div>
+  </div>
+
+  <div class="filters" role="group" aria-label="Filter contests">
+    <span class="lbl">TOS</span>
+    <button class="chipbtn" data-filter="verdict" data-value="all" aria-pressed="true">All</button>
+    <button class="chipbtn" data-filter="verdict" data-value="clean" aria-pressed="false">Clean</button>
+    <button class="chipbtn" data-filter="verdict" data-value="caution" aria-pressed="false">Caution</button>
+    <button class="chipbtn" data-filter="verdict" data-value="reject" aria-pressed="false">Rejected</button>
+    <span class="lbl" style="margin-left:12px">Subject</span>
+    <button class="chipbtn" data-filter="tag" data-value="all" aria-pressed="true">All</button>
+    <button class="chipbtn" data-filter="tag" data-value="film" aria-pressed="false">Film</button>
+    <button class="chipbtn" data-filter="tag" data-value="landscape" aria-pressed="false">Landscape</button>
+    <button class="chipbtn" data-filter="tag" data-value="street" aria-pressed="false">Street</button>
+    <button class="chipbtn" data-filter="tag" data-value="mexico" aria-pressed="false">Mexico</button>
+  </div>
+
+  <section>
+    <h2>Closing soon <span class="count">act before mid-August</span></h2>
+
+    <article class="row" data-verdict="clean" data-tags="film any">
+      <div class="stripe"></div>
+      <div class="main">
+        <h3><a href="https://www.lensculture.com/competitions">LensCulture Photobook Awards 2026 — free window</a></h3>
+        <ul class="chips"><li>Any subject</li><li>Series / book</li><li>Worldwide</li></ul>
+        <p class="fit">Rare fully-free LensCulture call. Strong home for a sequenced
+        film project — the CDMX street work or the parks series as a book dummy.</p>
+      </div>
+      <dl class="facts">
+        <dt>Deadline</dt><dd><span class="due-soon">Aug 12, 2026</span></dd>
+        <dt>Fee</dt><dd>$0 this call</dd>
+        <dt>Prize</dt><dd>Exhibition + editorial feature</dd>
+        <dt>TOS</dt><dd><span class="pill clean">Clean</span></dd>
+        <dt>Rights</dt><dd>"Photographers retain full copyrights… Period."</dd>
+      </dl>
+    </article>
+
+    <article class="row" data-verdict="caution" data-tags="film landscape">
+      <div class="stripe"></div>
+      <div class="main">
+        <h3><a href="https://kodakprofessional.com/photographers/photographer-highlights">Kodak Professional — Photographer Highlights</a></h3>
+        <ul class="chips"><li>Film</li><li>Kodak stocks</li><li>Rolling</li></ul>
+        <p class="fit">Feature program, not a contest — zero-cost exposure for the
+        Portra / Ektar / Tri-X work. Listed here because there's no deadline to miss:
+        submit whenever a strong roll comes back.</p>
+      </div>
+      <dl class="facts">
+        <dt>Deadline</dt><dd>Rolling</dd>
+        <dt>Fee</dt><dd>Free</dd>
+        <dt>Prize</dt><dd>Brand feature + credit</dd>
+        <dt>TOS</dt><dd><span class="pill unv">⚠ Unverified</span></dd>
+        <dt>Rights</dt><dd>T&amp;C behind a checkbox — read before submitting</dd>
+      </dl>
+    </article>
+  </section>
+
+  <section>
+    <h2>Open now <span class="count">verified July 8, 2026</span></h2>
+
+    <article class="row" data-verdict="clean" data-tags="landscape street any">
+      <div class="stripe"></div>
+      <div class="main">
+        <h3><a href="https://www.worldphoto.org/sony-world-photography-awards/open">Sony World Photography Awards — Single Image</a></h3>
+        <ul class="chips"><li>Landscape</li><li>Street</li><li>Travel</li><li>Worldwide</li></ul>
+        <p class="fit">The best free + clean + prestige entry available right now.
+        Three free images; photos must be taken during 2026, so this year's park
+        and festival work qualifies.</p>
+      </div>
+      <dl class="facts">
+        <dt>Deadline</dt><dd>Jan 5, 2027</dd>
+        <dt>Fee</dt><dd>Free (3 images)</dd>
+        <dt>Prize</dt><dd>Sony gear + Somerset House exhibition ⚠</dd>
+        <dt>TOS</dt><dd><span class="pill clean">Clean</span></dd>
+        <dt>Rights</dt><dd>3-year, promotion-only license (post-2023 terms)</dd>
+      </dl>
+    </article>
+
+    <article class="row" data-verdict="caution" data-tags="film">
+      <div class="stripe"></div>
+      <div class="main">
+        <h3><a href="https://www.ilfordphoto.com/studentcomp2026/">Ilford / HARMAN Student Competition — "Pretty Ugly"</a></h3>
+        <ul class="chips"><li>Film</li><li>B&amp;W</li><li>Darkroom print</li><li>Students only</li></ul>
+        <p class="fit">Eligible only while enrolled somewhere. Ilford or Kentmere
+        film, self-printed in the darkroom, physical prints mailed to the UK.</p>
+      </div>
+      <dl class="facts">
+        <dt>Deadline</dt><dd>Jan 31, 2027</dd>
+        <dt>Fee</dt><dd>Free ⚠</dd>
+        <dt>Prize</dt><dd>35mm camera + £200 Ilford product</dd>
+        <dt>TOS</dt><dd><span class="pill caution">Caution</span></dd>
+        <dt>Rights</dt><dd>Broad license on all entries, no time limit; copyright retained</dd>
+      </dl>
+    </article>
+  </section>
+
+  <section>
+    <h2>Watchlist <span class="count">expected to open</span></h2>
+    <p class="section-note">Cycles confirmed from past editions; exact dates land when the
+    organizer announces. The sweep re-checks these every run.</p>
+
+    <article class="row" data-verdict="clean" data-tags="street mexico film">
+      <div class="stripe"></div>
+      <div class="main">
+        <h3><a href="https://concursoscuartoscuro.com/">Cuartoscuro — Concurso Nacional de Fotografía</a></h3>
+        <ul class="chips"><li>Street</li><li>Documentary</li><li>Mexico residents 2+ yrs</li><li>Film friendly</li></ul>
+        <p class="fit">Best overall fit on the list. 2026 theme "La vida cotidiana"
+        closed Mar 30; expect the 2027 convocatoria ~Dec 2026. Follow @cuartoscuromex.</p>
+      </div>
+      <dl class="facts">
+        <dt>Window</dt><dd>~Dec 2026 → Mar 2027</dd>
+        <dt>Fee</dt><dd>~100 MXN / entry</dd>
+        <dt>Prize</dt><dd>$50,000 MXN + Sony camera (1st)</dd>
+        <dt>TOS</dt><dd><span class="pill clean">Clean</span></dd>
+      </dl>
+    </article>
+
+    <article class="row" data-verdict="clean" data-tags="film landscape">
+      <div class="stripe"></div>
+      <div class="main">
+        <h3><a href="https://analoguewonderland.co.uk/blogs/competitions">Analogue Wonderland — seasonal film competitions</a></h3>
+        <ul class="chips"><li>Film</li><li>35mm / 120</li><li>Themed</li><li>Worldwide</li></ul>
+        <p class="fit">Cleanest rights terms of any film competition checked: display
+        on site and social only, credited, never print or paid ads, removable on
+        request. 2026 winter theme was literally Kodak T-Max 400. K1000 and the
+        Yashica C both qualify.</p>
+      </div>
+      <dl class="facts">
+        <dt>Window</dt><dd>Winter ~Jan–Apr + summer</dd>
+        <dt>Fee</dt><dd>Free</dd>
+        <dt>Prize</dt><dd>Film bundles ⚠</dd>
+        <dt>TOS</dt><dd><span class="pill clean">Clean</span></dd>
+      </dl>
+    </article>
+
+    <article class="row" data-verdict="clean" data-tags="film landscape street any">
+      <div class="stripe"></div>
+      <div class="main">
+        <h3><a href="https://www.nikon-photocontest.com/en/">Nikon Film and Photo Contest</a></h3>
+        <ul class="chips"><li>Any subject</li><li>Worldwide</li><li>Any camera</li></ul>
+        <p class="fit">Roughly biennial; last edition ran Oct 2024 – Mar 2025. Free,
+        winners-only license, Spanish entry guide available. Watch the site from October.</p>
+      </div>
+      <dl class="facts">
+        <dt>Window</dt><dd>Next edition TBA ⚠</dd>
+        <dt>Fee</dt><dd>Free</dd>
+        <dt>Prize</dt><dd>Grand prize + category awards</dd>
+        <dt>TOS</dt><dd><span class="pill clean">Clean</span></dd>
+      </dl>
+    </article>
+
+    <article class="row" data-verdict="clean" data-tags="landscape">
+      <div class="stripe"></div>
+      <div class="main">
+        <h3><a href="https://www.skypixel.com/">SkyPixel Annual Contest (DJI)</a></h3>
+        <ul class="chips"><li>Aerial</li><li>DJI gear required</li><li>Worldwide</li></ul>
+        <p class="fit">Mini 3 Pro qualifies. 11th edition closed Mar 10, 2026 with a
+        ~$200K pool; expect the 12th to open ~Dec 2026.</p>
+      </div>
+      <dl class="facts">
+        <dt>Window</dt><dd>~Dec 2026 → Mar 2027 ⚠</dd>
+        <dt>Fee</dt><dd>Free</dd>
+        <dt>Prize</dt><dd>~$200K pool (Hasselblad X2D II…)</dd>
+        <dt>TOS</dt><dd><span class="pill clean">Clean</span></dd>
+      </dl>
+    </article>
+  </section>
+
+  <section>
+    <h2>Rejected <span class="count">the fine print, quoted</span></h2>
+    <p class="section-note">Each of these fails the rights filter on <em>all entries</em> —
+    not just winners — or is a pay-to-win mill. The offending sentence is kept verbatim
+    so future sweeps don't re-litigate.</p>
+
+    <article class="row" data-verdict="reject" data-tags="film">
+      <div class="stripe"></div>
+      <div class="main">
+        <h3><a href="https://www.lomography.com/competitions">Lomography — all site competitions (incl. TEN AND ONE qualifiers)</a></h3>
+        <ul class="chips"><li>Film</li><li>Free</li><li>Weekly</li><li>Perfect fit, terrible terms</li></ul>
+        <p class="fit">Free weekly contests and an ideal film fit — but entering
+        requires uploading, and uploading triggers this:</p>
+        <blockquote class="tos-quote">
+          "…a royalty-free, <mark>perpetual</mark>, <mark>irrevocable</mark>, non-exclusive,
+          worldwide licence to use, distribute, reproduce, <mark>modify</mark>, adapt, combine,
+          prepare <mark>derivative works</mark> of… your Content… for
+          <mark>any editorial or commercial purpose</mark>."
+          <span class="src">— lomography.com Terms of Use, fetched July 2026</span>
+        </blockquote>
+      </div>
+      <dl class="facts">
+        <dt>Fee</dt><dd>Free</dd>
+        <dt>Prize</dt><dd>Lomo cameras + Hall of Fame</dd>
+        <dt>TOS</dt><dd><span class="pill reject">Reject</span></dd>
+        <dt>Scope</dt><dd>ALL uploads, uncompensated</dd>
+      </dl>
+    </article>
+
+    <article class="row" data-verdict="reject" data-tags="landscape any">
+      <div class="stripe"></div>
+      <div class="main">
+        <h3><a href="https://tamron-americas.com/tamron-photo-contest/">Tamron Americas User Photo &amp; Video Contest</a></h3>
+        <ul class="chips"><li>Tamron lenses</li><li>Mexico eligible</li><li>~Nov yearly</li></ul>
+        <p class="fit">The gear fits and Mexico is explicitly eligible — the license is the problem:</p>
+        <blockquote class="tos-quote">
+          "…non-exclusive, worldwide, royalty-free license <mark>in perpetuity</mark> to use,
+          reproduce, edit, distribute, publish, adapt, broadcast, modify, make
+          <mark>derivative works</mark> of and/or <mark>otherwise exploit in any manner</mark>…
+          in all media… <mark>without compensation</mark>."
+          <span class="src">— official rules, all entries</span>
+        </blockquote>
+      </div>
+      <dl class="facts">
+        <dt>Fee</dt><dd>Free</dd>
+        <dt>Prize</dt><dd>Tamron lenses</dd>
+        <dt>TOS</dt><dd><span class="pill reject">Reject</span></dd>
+        <dt>Scope</dt><dd>ALL entries</dd>
+      </dl>
+    </article>
+
+    <article class="row" data-verdict="reject" data-tags="street any">
+      <div class="stripe"></div>
+      <div class="main">
+        <h3><a href="https://www.ricoh-imaging.com/en/grphotofestival/2025/">Ricoh GR PHOTO FESTIVAL</a></h3>
+        <ul class="chips"><li>GR cameras only</li><li>No prizes</li></ul>
+        <p class="fit">Exhibition-only (no prizes at all) while taking a forever license:</p>
+        <blockquote class="tos-quote">
+          "…<mark>irrevocable</mark>, royalty-free, worldwide, <mark>in perpetuity</mark>…
+          license to publish, display, reproduce, <mark>modify</mark>, edit or otherwise use…
+          for advertising or promoting the Contest <mark>or for any other reason</mark>."
+          <span class="src">— official rules, all entries</span>
+        </blockquote>
+      </div>
+      <dl class="facts">
+        <dt>Fee</dt><dd>Free</dd>
+        <dt>Prize</dt><dd>None (exhibition only)</dd>
+        <dt>TOS</dt><dd><span class="pill reject">Reject</span></dd>
+        <dt>Scope</dt><dd>ALL entries</dd>
+      </dl>
+    </article>
+
+    <article class="row" data-verdict="reject" data-tags="landscape any">
+      <div class="stripe"></div>
+      <div class="main">
+        <h3><a href="https://www.alaskatravel.com/photos/contest/">AlaskaTravel.com Photo Contest</a></h3>
+        <ul class="chips"><li>Alaska photos</li><li>Likely US-only ⚠</li></ul>
+        <p class="fit">The bluntest grab of the sweep — not a license, a transfer:</p>
+        <blockquote class="tos-quote">
+          "All entered photos <mark>become property of</mark> Alaska Tour &amp; Travel."
+          <span class="src">— contest rules, all entries · prize: $500 Visa card</span>
+        </blockquote>
+      </div>
+      <dl class="facts">
+        <dt>Deadline</dt><dd>Oct 9, 2026</dd>
+        <dt>Fee</dt><dd>Free</dd>
+        <dt>Prize</dt><dd>$500 gift card</dd>
+        <dt>TOS</dt><dd><span class="pill reject">Reject</span></dd>
+      </dl>
+    </article>
+
+    <article class="row" data-verdict="reject" data-tags="any">
+      <div class="stripe"></div>
+      <div class="main">
+        <h3>GuruShots · ViewBug · Photocrowd</h3>
+        <ul class="chips"><li>Engagement mills</li><li>Never listed</li></ul>
+        <p class="fit">Pay-to-win voting mechanics and subscription upsells, not juried
+        contests. Excluded from every sweep by rule.</p>
+      </div>
+      <dl class="facts">
+        <dt>Fee</dt><dd>"Free" + paid boosts</dd>
+        <dt>Prize</dt><dd>Exposure</dd>
+        <dt>TOS</dt><dd><span class="pill reject">Mill</span></dd>
+      </dl>
+    </article>
+  </section>
+
+  <footer>
+    Data verified July 8, 2026 · refreshed monthly by contest-scout
+  </footer>
+</div>
+
+<script>
+  const state = { verdict: "all", tag: "all" };
+  const rows = Array.from(document.querySelectorAll(".row"));
+  const buttons = Array.from(document.querySelectorAll(".chipbtn"));
+
+  function apply() {
+    for (const row of rows) {
+      const verdictOk =
+        state.verdict === "all" || row.dataset.verdict === state.verdict;
+      const tags = (row.dataset.tags || "").split(" ");
+      const tagOk =
+        state.tag === "all" || tags.includes(state.tag) || tags.includes("any");
+      row.hidden = !(verdictOk && tagOk);
+    }
+  }
+
+  for (const btn of buttons) {
+    btn.addEventListener("click", () => {
+      state[btn.dataset.filter] = btn.dataset.value;
+      for (const other of buttons) {
+        if (other.dataset.filter === btn.dataset.filter) {
+          other.setAttribute("aria-pressed", String(other === btn));
+        }
+      }
+      apply();
+    });
+  }
+</script>
+
+</body>
+</html>
