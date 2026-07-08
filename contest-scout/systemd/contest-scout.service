@@ -1,0 +1,15 @@
+[Unit]
+Description=Contest Scout - monthly photo-contest sweep via headless Claude
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory={{INSTALL_DIR}}/contest-scout
+ExecStart={{INSTALL_DIR}}/.venv/bin/python {{INSTALL_DIR}}/contest-scout/scripts/sweep.py
+EnvironmentFile=/etc/rasppi-utils/contest-scout/.env
+# Web research + a Claude session take a while; don't let systemd kill a slow run.
+TimeoutStartSec=3600
+
+[Install]
+WantedBy=multi-user.target

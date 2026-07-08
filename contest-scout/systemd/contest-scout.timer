@@ -1,0 +1,11 @@
+[Unit]
+Description=Monthly timer for Contest Scout
+
+[Timer]
+# 1st of each month, morning; Persistent catches a Pi that was off at the time.
+OnCalendar=*-*-01 09:00:00
+Persistent=true
+RandomizedDelaySec=1800
+
+[Install]
+WantedBy=timers.target

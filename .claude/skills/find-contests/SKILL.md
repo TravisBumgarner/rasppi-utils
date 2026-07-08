@@ -104,4 +104,7 @@ across sources 1, 3, 4 instead.
 5. Report: what's newly open, what closes within ~6 weeks, what changed, what
    was rejected and why. Lead with deadlines that need action soon.
 
-Suggest `/schedule` for a monthly run if the user wants this automated.
+Automation: the `contest-scout` utility runs this skill headless on the Pi
+monthly (systemd timer), commits the result, and sends a Pushover nudge —
+see `contest-scout/README.md`. When running headless, the final reply should
+be the short notification summary the runner asks for.
