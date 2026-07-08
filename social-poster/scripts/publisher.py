@@ -108,7 +108,7 @@ def _publish_rows(rows) -> None:
 
         try:
             creds = json.loads(row["credentials"])
-            platforms.post(platform, creds, image_path, row["caption"])
+            remote_id = platforms.post(platform, creds, image_path, row["caption"])
         except Exception as e:  # noqa: BLE001 - isolate failures per target.
             error = str(e)[:500]
             _update_target(target_id, "failed", error=error)
@@ -116,20 +116,21 @@ def _publish_rows(rows) -> None:
             print("publisher: target {0} ({1}) FAILED: {2}".format(
                 target_id, platform, error))
         else:
-            _update_target(target_id, "posted", posted_at=db.utc_now_iso())
+            _update_target(target_id, "posted", posted_at=db.utc_now_iso(),
+                           remote_id=remote_id)
             _log_attempt(row, "posted")
             print("publisher: target {0} ({1}) posted".format(
                 target_id, platform))
 
 
-def _update_target(target_id, status, error=None, posted_at=None):
-    """Update a single post_targets row's status/error/posted_at."""
+def _update_target(target_id, status, error=None, posted_at=None, remote_id=None):
+    """Update a single post_targets row's status/error/posted_at/remote_id."""
     conn = db.get_connection()
     try:
         conn.execute(
-            "UPDATE post_targets SET status = ?, error = ?, posted_at = ? "
-            "WHERE id = ?",
-            (status, error, posted_at, target_id),
+            "UPDATE post_targets SET status = ?, error = ?, posted_at = ?, "
+            "remote_id = ? WHERE id = ?",
+            (status, error, posted_at, remote_id, target_id),
         )
         conn.commit()
     finally:

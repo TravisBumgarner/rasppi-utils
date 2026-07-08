@@ -51,7 +51,8 @@ def _target_row(post_id):
     conn = db.get_connection()
     try:
         return conn.execute(
-            "SELECT status, error FROM post_targets WHERE post_id = ?", (post_id,)
+            "SELECT status, error, remote_id FROM post_targets WHERE post_id = ?",
+            (post_id,),
         ).fetchone()
     finally:
         conn.close()
@@ -62,12 +63,15 @@ def test_publish_post_sends_future_scheduled_target(tmp_path, monkeypatch):
     _use_temp_db(tmp_path, monkeypatch)
     post_id = _seed_post(scheduled_at="2999-01-01T00:00:00Z")
 
-    with patch.object(platforms, "post") as post:
+    with patch.object(platforms, "post", return_value="media-42") as post:
         publisher.publish_post(post_id)
 
     post.assert_called_once()
     assert post.call_args.args[0] == "instagram"
-    assert _target_row(post_id)["status"] == "posted"
+    row = _target_row(post_id)
+    assert row["status"] == "posted"
+    # The platform's id is captured so engagement can be fetched later.
+    assert row["remote_id"] == "media-42"
 
 
 def test_publish_post_records_failure(tmp_path, monkeypatch):

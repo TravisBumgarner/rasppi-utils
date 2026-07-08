@@ -16,6 +16,15 @@ export interface AddAccountResult extends Account {
   post_count: number | null;
 }
 
+/** Latest engagement snapshot for a published target. Null counts mean the
+ * platform doesn't expose that metric (e.g. Instagram share counts). */
+export interface Engagement {
+  likes: number | null;
+  comments: number | null;
+  reposts: number | null;
+  recorded_at: string;
+}
+
 export interface Target {
   /** The post_target row id — the unit of a photo×account record. */
   id: number;
@@ -26,6 +35,10 @@ export interface Target {
   status: TargetStatus;
   error: string | null;
   posted_at: string | null;
+  /** Platform id of the published item (IG media id / Bluesky at:// URI);
+   * null before publish or for posts published before ids were captured. */
+  remote_id: string | null;
+  engagement: Engagement | null;
 }
 
 /** Per-platform captions, e.g. `{ instagram: '…', bluesky: '…' }`. */
@@ -39,6 +52,8 @@ export interface Post {
   scheduled_at: string;
   image_url: string;
   created_at: string;
+  /** Free-text log of feature-hub pickups (e.g. "@moodygrams 2026-07-12"). */
+  featured_by: string;
   targets: Target[];
 }
 
@@ -76,11 +91,22 @@ export interface EditPostInput {
   captions: Captions;
   scheduled_at: string;
   account_ids: number[];
+  featured_by?: string;
 }
 
 export interface UpdatePostInput {
   scheduled_at?: string;
   caption?: string;
+  featured_by?: string;
+}
+
+/** Per-target outcome of an engagement snapshot run. */
+export interface EngagementSnapshotResult {
+  target_id: number;
+  platform: Platform;
+  username: string;
+  ok: boolean;
+  error: string | null;
 }
 
 /** One weekly posting slot: a day paired with a local 'HH:MM' time.

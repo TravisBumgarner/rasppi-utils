@@ -126,13 +126,15 @@ def _wait_for_container(creation_id: str, access_token: str) -> None:
     raise RuntimeError("Instagram: media container did not finish in time.")
 
 
-def post_instagram(creds: Dict, image_path: str, caption: str) -> None:
+def post_instagram(creds: Dict, image_path: str, caption: str) -> Optional[str]:
     """Publish a single photo to Instagram via the Graph API.
 
     Args:
         creds: ``{"ig_user_id": ..., "access_token": ...}``.
         image_path: Path to the image file on disk.
         caption: Caption text for the post.
+
+    Returns the published media's id (used later to fetch engagement).
 
     Steps: validate aspect ratio → resolve the public image URL → create a
     media container → wait for it to finish → publish.
@@ -145,11 +147,14 @@ def post_instagram(creds: Dict, image_path: str, caption: str) -> None:
 
     image_url = public_image_url(image_path)
 
+    # alt_text (Graph API, added Mar 2025): accessibility + keyword surface.
+    # Servers that predate it simply ignore the extra parameter.
     container = requests.post(
         f"{INSTAGRAM_GRAPH_BASE}/{ig_user_id}/media",
         data={
             "image_url": image_url,
             "caption": caption,
+            "alt_text": derive_alt_text(caption),
             "access_token": access_token,
         },
         timeout=60,
@@ -167,6 +172,7 @@ def post_instagram(creds: Dict, image_path: str, caption: str) -> None:
     )
     if not publish.ok:
         raise RuntimeError(_instagram_graph_error(publish))
+    return publish.json().get("id")
 
 
 def _bluesky_error_message(exc: Exception) -> Optional[str]:
@@ -206,7 +212,32 @@ def _bluesky_login(creds: Dict):
     return client, profile
 
 
-def post_bluesky(creds: Dict, image_path: str, caption: str) -> None:
+# Instagram caps custom alt text at 1000 characters; Bluesky at 2000
+# graphemes. Use the lower bound for both.
+ALT_TEXT_LIMIT = 1000
+
+
+def derive_alt_text(caption: str) -> str:
+    """Derive image alt text from a caption's descriptive lines.
+
+    Several curated Bluesky feeds only pick up posts whose image has non-empty
+    alt text, and screen readers need a description of the image, not the
+    metadata. So: keep the title/description lines, drop the gear/setup lines
+    and any line that is only tags/mentions. Empty when nothing descriptive
+    remains (a hand-written caption of pure tags).
+    """
+    kept = []
+    for line in caption.splitlines():
+        line = line.strip()
+        if not line or line.startswith(("The Gear -", "The Setup -", "📷", "🎞️")):
+            continue
+        if all(word.startswith(("#", "@")) for word in line.split()):
+            continue
+        kept.append(line)
+    return " ".join(kept)[:ALT_TEXT_LIMIT]
+
+
+def post_bluesky(creds: Dict, image_path: str, caption: str) -> Optional[str]:
     """Publish a single image post to Bluesky.
 
     Args:
@@ -214,11 +245,16 @@ def post_bluesky(creds: Dict, image_path: str, caption: str) -> None:
         image_path: Path to the image file on disk.
         caption: Text for the post.
 
+    Returns the created post's at:// URI (used later to fetch engagement).
+
     Exceptions from atproto are allowed to propagate to the caller.
     """
     client, _ = _bluesky_login(creds)
     with open(image_path, "rb") as f:
-        client.send_image(text=caption, image=f.read(), image_alt="")
+        record = client.send_image(
+            text=caption, image=f.read(), image_alt=derive_alt_text(caption)
+        )
+    return getattr(record, "uri", None)
 
 
 def _fetch_instagram_profile(creds: Dict) -> Dict:
@@ -291,7 +327,7 @@ def _dry_run_enabled() -> bool:
     return os.environ.get("DRY_RUN", "").strip() == "1"
 
 
-def post(platform: str, creds: Dict, image_path: str, caption: str) -> None:
+def post(platform: str, creds: Dict, image_path: str, caption: str) -> Optional[str]:
     """Dispatch a post to the correct platform implementation.
 
     Args:
@@ -299,6 +335,9 @@ def post(platform: str, creds: Dict, image_path: str, caption: str) -> None:
         creds: Platform-specific credentials dict.
         image_path: Path to the image file on disk.
         caption: Caption/text for the post.
+
+    Returns the platform's id for the published item (Instagram media id /
+    Bluesky at:// URI), or ``None`` in DRY_RUN.
 
     Raises:
         ValueError: If ``platform`` is not a known platform.
@@ -311,9 +350,8 @@ def post(platform: str, creds: Dict, image_path: str, caption: str) -> None:
             f"publisher: [DRY_RUN] would post to {platform}: "
             f"{Path(image_path).name} — {caption[:60]!r}"
         )
-        return
+        return None
 
     if platform == "instagram":
-        post_instagram(creds, image_path, caption)
-    else:
-        post_bluesky(creds, image_path, caption)
+        return post_instagram(creds, image_path, caption)
+    return post_bluesky(creds, image_path, caption)

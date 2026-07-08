@@ -6,6 +6,7 @@ A modular collection of background utilities for a Raspberry Pi. Each utility is
 - **status-dashboard** — read-only web page showing utility status and logs.
 - **pixels64** — hosts the Web Bluetooth UI for controlling the Pixels64 LED display.
 - **social-poster** — schedule image posts to Instagram/Bluesky from a calendar/queue web app.
+- **contest-scout** — monthly headless-Claude sweep for photo contests; updates the deadlines doc and pings the contact-form relay.
 
 ## Setup
 
@@ -52,6 +53,7 @@ Config lives at `/etc/rasppi-utils/<utility>/.env`.
 | `supabase-keepalive` | `SUPABASE_URL`, `SUPABASE_KEY` (Supabase Dashboard → Settings → API). Runs daily via systemd timer. |
 | `status-dashboard` | `PORT` (default `80`). Access at `http://rasppi-utils.local`. No auth — trusted networks only. |
 | `pixels64` | `PORT` (default `8443`). Access at `https://rasppi-utils.local:8443` in Chrome/Edge. HTTPS with a self-signed cert (one-time browser warning) — required for Web Bluetooth. The page connects to your ESP32 boards directly over Bluetooth. |
+| `contest-scout` | `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`) or `ANTHROPIC_API_KEY`; optional `CLAUDE_BIN`, `CONTACT_FORM_URL`. Monthly systemd timer runs the repo's `/find-contests` skill headless, commits the updated `contest-deadlines.md`, and sends the summary through the contact-form relay ("Time for monthly contests"). Claude CLI + git push auth are installed by `bootstrap-pi.sh` — see [contest-scout/README.md](contest-scout/README.md). |
 | `social-poster` | `PORT` (default `5050`), `PUBLIC_BASE_URL` (Instagram tunnel — see [setup](#social-poster-frontend)). Access at `http://rasppi-utils.local:5050`. Upload an image, pick accounts, schedule on a calendar; a per-minute timer publishes due posts. Add Instagram (user ID + long-lived access token, Graph API) and Bluesky (handle + app password) accounts in the UI. Data in `/var/lib/rasppi-utils/social-poster`. Instagram needs a public image URL, so a Cloudflare Tunnel (`social-poster-tunnel` service) exposes this app; Bluesky works without it. |
 
 ## Updating

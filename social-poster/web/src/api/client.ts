@@ -6,6 +6,7 @@ import type {
   CreateAccountInput,
   CreatePostInput,
   EditPostInput,
+  EngagementSnapshotResult,
   IngestItem,
   LogEntry,
   Post,
@@ -92,10 +93,23 @@ export function editPost(id: number, input: EditPostInput): Promise<Post> {
   form.append('captions', JSON.stringify(input.captions));
   form.append('scheduled_at', input.scheduled_at);
   form.append('account_ids', JSON.stringify(input.account_ids));
+  if (input.featured_by !== undefined) {
+    form.append('featured_by', input.featured_by);
+  }
   return request<Post>(`/posts/${id}`, {
     method: 'PUT',
     body: form,
   });
+}
+
+/** Fetch fresh engagement counts for a post's published targets. */
+export function snapshotPostEngagement(
+  id: number
+): Promise<{ results: EngagementSnapshotResult[]; post: Post }> {
+  return request<{ results: EngagementSnapshotResult[]; post: Post }>(
+    `/posts/${id}/engagement/snapshot`,
+    { method: 'POST' }
+  );
 }
 
 /** Make a post due now; the publisher sends it on its next tick (≤1 min). */

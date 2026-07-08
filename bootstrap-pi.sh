@@ -107,6 +107,75 @@ setup_venv() {
     log_info "Python dependencies installed"
 }
 
+# Whether a utility is enabled (uncommented) in utilities.conf
+utility_enabled() {
+    sed 's/#.*//' "${SCRIPT_DIR}/utilities.conf" 2>/dev/null \
+        | grep -Eq "^[[:space:]]*$1[[:space:]]*$"
+}
+
+# contest-scout: headless Claude CLI + git push auth (skipped unless enabled)
+setup_contest_scout_deps() {
+    utility_enabled contest-scout || return 0
+
+    # Node + the Claude Code CLI (claude auto-updates itself once installed).
+    if ! command -v npm >/dev/null 2>&1; then
+        log_info "Installing Node.js + npm (for the Claude Code CLI)..."
+        apt-get install -y nodejs npm
+    fi
+    if command -v claude >/dev/null 2>&1; then
+        log_info "Claude Code already installed ($(claude --version 2>/dev/null | head -1))"
+    else
+        log_info "Installing Claude Code CLI..."
+        npm install -g @anthropic-ai/claude-code
+    fi
+
+    # The service runs as root against a repo it doesn't own — allowlist it.
+    if ! git config --global --get-all safe.directory 2>/dev/null | grep -qx "${SCRIPT_DIR}"; then
+        git config --global --add safe.directory "${SCRIPT_DIR}"
+    fi
+
+    # Push auth: the monthly sweep commits and pushes from this clone.
+    if GIT_TERMINAL_PROMPT=0 git -C "${SCRIPT_DIR}" push --dry-run >/dev/null 2>&1; then
+        log_info "git push auth OK"
+        return 0
+    fi
+    log_warn "git push isn't authorized from this clone (contest-scout needs it)."
+    if [[ -t 0 ]]; then
+        read -rp "GitHub username (blank to skip): " gh_user
+        if [[ -n "${gh_user}" ]]; then
+            read -rsp "GitHub personal access token (repo scope): " gh_token; echo
+            git config --global credential.helper store
+            touch /root/.git-credentials
+            chmod 600 /root/.git-credentials
+            # Replace any stale github.com entry so re-runs update the token.
+            sed -i '/github.com/d' /root/.git-credentials
+            echo "https://${gh_user}:${gh_token}@github.com" >> /root/.git-credentials
+            if GIT_TERMINAL_PROMPT=0 git -C "${SCRIPT_DIR}" push --dry-run >/dev/null 2>&1; then
+                log_info "git push auth configured"
+            else
+                log_warn "Stored the token but a dry-run push still fails — check the PAT's repo access."
+            fi
+        fi
+    else
+        log_warn "Non-interactive shell — configure it later with a PAT:"
+        log_warn "  sudo git config --global credential.helper store && sudo git -C ${SCRIPT_DIR} push"
+    fi
+}
+
+# contest-scout: flag placeholder credentials left in the .env (after sync.sh)
+verify_contest_scout_env() {
+    utility_enabled contest-scout || return 0
+    local env_file="${CONFIG_DIR}/contest-scout/.env"
+    if [[ ! -f "${env_file}" ]]; then
+        log_warn "contest-scout: no .env at ${env_file} — run 'sudo ./sync.sh' to create it"
+        return 0
+    fi
+    if grep -q "your-oauth-token" "${env_file}" && ! grep -q "^ANTHROPIC_API_KEY=sk-" "${env_file}"; then
+        log_warn "contest-scout: no Claude credential yet. On your laptop run 'claude setup-token'"
+        log_warn "  and set CLAUDE_CODE_OAUTH_TOKEN in ${env_file}"
+    fi
+}
+
 # Create config directory
 setup_config_dir() {
     log_info "Setting up configuration directory..."
@@ -145,8 +214,10 @@ main() {
     setup_hostname
     setup_user
     setup_venv
+    setup_contest_scout_deps
     setup_config_dir
     run_sync
+    verify_contest_scout_env
 
     echo ""
     echo "=========================================="
