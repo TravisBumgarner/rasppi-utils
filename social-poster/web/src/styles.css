@@ -1094,8 +1094,336 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   background: var(--bg-elev-2);
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 8px 12px;
+}
+
+/* Username on the first line, display name · platform below it. */
+.account-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.account-row-info .muted {
+  font-size: 12px;
+}
+
+/* ---------------------------------------------------------------------------
+   Bulk add modal: schedule/accounts/upload config left, review list right.
+--------------------------------------------------------------------------- */
+.modal--bulk {
+  display: flex;
+  flex-direction: column;
+  max-width: 1000px;
+  height: min(720px, 92vh);
+}
+
+.bulk-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) 1fr;
+  gap: 20px;
+  padding: 16px 20px 0;
+}
+
+.bulk-config {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-right: 4px;
+}
+
+/* Read-only schedule summary in the bulk modal (edited in its own modal). */
+.schedule-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.schedule-summary-row {
+  display: flex;
+  gap: 10px;
+}
+
+.schedule-summary-day {
+  width: 34px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+/* Dedicated weekly schedule editor: one column per day. */
+.modal--schedule {
+  max-width: 1080px;
+}
+
+.schedule-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 20px 0;
+}
+
+.schedule-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+
+.schedule-day {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 180px;
+  padding: 10px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.schedule-day--active {
+  background: var(--bg-elev-2);
+}
+
+.schedule-day-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.schedule-day-times {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+/* Chips stretch to the column width; pin the remove ✕ to the right edge. */
+.schedule-day-times .bulk-time-chip {
+  justify-content: space-between;
+}
+
+.schedule-day .time-combobox,
+.schedule-day .time-combobox input {
+  width: 100%;
+}
+
+.modal--schedule .modal-actions {
+  padding: 0 20px 20px;
+}
+
+@media (max-width: 900px) {
+  .schedule-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .schedule-day {
+    min-height: 0;
+  }
+}
+
+.bulk-time-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-elev-2);
+}
+
+.bulk-time-remove {
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.bulk-time-remove:hover {
+  color: var(--danger);
+}
+
+/* Combobox time picker: text input + filterable dropdown of presets. */
+.time-combobox {
+  position: relative;
+  display: inline-flex;
+}
+
+.time-combobox input {
+  width: 110px;
+  padding: 4px 10px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+}
+
+.time-combobox input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.time-combobox input::placeholder {
+  color: var(--muted);
+}
+
+.time-combobox-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  width: 130px;
+  max-height: 190px;
+  overflow-y: auto;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.time-combobox-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 5px 10px;
+  font-size: 13px;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.time-combobox-option--active {
+  background: var(--bg-elev-2);
+  color: var(--accent);
+}
+
+/* Photo drop target — also opens the file picker on click. */
+.bulk-dropzone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 24px 12px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    border-color 0.15s,
+    color 0.15s,
+    background 0.15s;
+}
+
+.bulk-dropzone:hover,
+.bulk-dropzone--active {
+  border-color: var(--accent);
+  color: var(--text);
+  background: var(--bg-elev-2);
+}
+
+.bulk-review {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px;
+  border: 2px dashed transparent;
+  border-radius: var(--radius);
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+/* The whole column is the drop target — light up while dragging over it. */
+.bulk-review--dragover {
+  border-color: var(--accent);
+  background: var(--bg-elev-2);
+}
+
+/* Empty state: the dropzone fills the column. */
+.bulk-dropzone--fill {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bulk-item {
+  display: flex;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-elev-2);
+  padding: 10px;
+}
+
+.bulk-item-thumb {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.bulk-item-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bulk-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bulk-item-slot {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* These sit outside a .form (which normally supplies the 20px padding). */
+.modal--bulk .form-error-slot,
+.modal--bulk .modal-actions {
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+.modal--bulk .modal-actions {
+  padding-bottom: 20px;
+}
+
+@media (max-width: 700px) {
+  .modal--bulk {
+    height: auto;
+    max-height: 92vh;
+  }
+  .bulk-body {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+  .bulk-config,
+  .bulk-review {
+    overflow: visible;
+  }
 }

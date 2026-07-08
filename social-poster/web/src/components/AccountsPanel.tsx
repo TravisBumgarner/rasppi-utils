@@ -162,12 +162,12 @@ export function AccountsPanel({ onClose }: AccountsPanelProps) {
           )}
           {accounts?.map((account) => (
             <div key={account.id} className="account-row">
-              <div>
-                <strong>@{account.username}</strong>{' '}
-                {account.display_name && (
-                  <span className="muted">{account.display_name} · </span>
-                )}
-                <span className="muted">{account.platform}</span>
+              <div className="account-row-info">
+                <strong>@{account.username}</strong>
+                <span className="muted">
+                  {account.display_name ? `${account.display_name} · ` : ''}
+                  {account.platform}
+                </span>
               </div>
               <button
                 type="button"

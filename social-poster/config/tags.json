@@ -1,0 +1,936 @@
+{
+  "Camera": {
+    "DJIMini3Pro": {
+      "general": [
+        "#dji",
+        "#djiphotography",
+        "#djidrone",
+        "#djicreator",
+        "#djimini3pro"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#dronephotography",
+        "#AerialPhotography",
+        "#dji",
+        "#filmphotography",
+        "#film",
+        "#believeinfilm",
+        "#filmisnotdead",
+        "#infilmwetrust",
+        "#filmphotography 🎞️",
+        "#35mmFilm"
+      ]
+    },
+    "iPhone13": {
+      "general": [
+        "#iphonephotography",
+        "#shotoniphone",
+        "#mobilephotography",
+        "#iphone13"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#iPhone",
+        "#mobilephotography"
+      ]
+    },
+    "iPhone15": {
+      "general": [
+        "#iphonephotography",
+        "#shotoniphone",
+        "#mobilephotography",
+        "#iphone15"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#iPhone",
+        "#mobilephotography"
+      ]
+    },
+    "NikonD5300": {
+      "general": [
+        "#nikond5300",
+        "#nikon",
+        "#nikonphotography",
+        "#nikonphotographer"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#nikon"
+      ]
+    },
+    "NikonD7500": {
+      "general": [
+        "#nikond7500",
+        "#nikon",
+        "#nikonphotography",
+        "#nikonphotographer"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#nikon"
+      ]
+    },
+    "NikonSLR": {
+      "general": [
+        "#filmphotography",
+        "#filmisnotdead",
+        "#analogphotography",
+        "#35mm",
+        "#thedaily35mm",
+        "#35mmfilm",
+        "#nikon",
+        "#nikonphotography",
+        "#nikonphotographer"
+      ],
+      "priority": [
+        "#analogsunrise",
+        "@analogsunrise",
+        "#shootfilmmag",
+        "@shootfilmworld"
+      ],
+      "bluesky": [
+        "#nikon"
+      ]
+    },
+    "NikonZ5": {
+      "general": [
+        "#nikonz5",
+        "#nikon",
+        "#nikonphotography",
+        "#nikonphotographer"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#nikon"
+      ]
+    },
+    "OlympusPS": {
+      "general": [
+        "#filmphotography",
+        "#filmisnotdead",
+        "#analogphotography",
+        "#35mm",
+        "#thedaily35mm",
+        "#35mmfilm",
+        "#olympusphotography",
+        "#olympuscamera"
+      ],
+      "priority": [
+        "#analogsunrise",
+        "@analogsunrise",
+        "#shootfilmmag",
+        "@shootfilmworld"
+      ],
+      "bluesky": [
+        "#PointandShoot",
+        "#filmphotography",
+        "#film",
+        "#believeinfilm",
+        "#filmisnotdead",
+        "#infilmwetrust",
+        "#filmphotography 🎞️",
+        "#35mmFilm"
+      ]
+    },
+    "PentaxK1000": {
+      "general": [
+        "#filmphotography",
+        "#filmisnotdead",
+        "#analogphotography",
+        "#35mm",
+        "#thedaily35mm",
+        "#35mmfilm",
+        "#pentax",
+        "#k1000",
+        "#pentaxk1000"
+      ],
+      "priority": [
+        "#analogsunrise",
+        "@analogsunrise",
+        "#shootfilmmag",
+        "@shootfilmworld"
+      ],
+      "bluesky": [
+        "#pentaxK1000",
+        "#pentaxphotography",
+        "#filmphotography",
+        "#film",
+        "#believeinfilm",
+        "#filmisnotdead",
+        "#infilmwetrust",
+        "#filmphotography 🎞️",
+        "#35mmFilm"
+      ]
+    },
+    "Pixel3": {
+      "general": [
+        "#shotonpixel",
+        "#pixel3",
+        "#googlepixel3",
+        "#googlepixel",
+        "#pixelartist"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#googlepixel",
+        "#mobilephotography"
+      ]
+    },
+    "YashicaC": {
+      "general": [
+        "#filmphotography",
+        "#filmisnotdead",
+        "#analogphotography",
+        "#120",
+        "#120film",
+        "#yashicac",
+        "#yashica"
+      ],
+      "priority": [
+        "#analogsunrise",
+        "@analogsunrise",
+        "#shootfilmmag",
+        "@shootfilmworld"
+      ],
+      "bluesky": [
+        "#yashica",
+        "#filmphotography",
+        "#film",
+        "#believeinfilm",
+        "#filmisnotdead",
+        "#infilmwetrust",
+        "#filmphotography 🎞️",
+        "#120film"
+      ]
+    },
+    "UnknownFilmCamera": {
+      "general": [
+        "#filmphotography",
+        "#filmisnotdead",
+        "#analogphotography",
+        "#35mm",
+        "#thedaily35mm",
+        "#35mmfilm"
+      ],
+      "priority": [
+        "#analogsunrise",
+        "@analogsunrise",
+        "#shootfilmmag",
+        "@shootfilmworld"
+      ],
+      "bluesky": [
+        "#filmphotography",
+        "#film",
+        "#believeinfilm",
+        "#filmisnotdead",
+        "#infilmwetrust",
+        "#filmphotography 🎞️",
+        "#35mmFilm"
+      ]
+    }
+  },
+  "FilmType": {
+    "Across100": {
+      "general": [
+        "#fujifilm",
+        "#across100"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#fujifilm",
+        "#across100"
+      ]
+    },
+    "FujifilmXtra400": {
+      "general": [
+        "#fujifilm",
+        "#fujifilmxtra400",
+        "#fujifilmxtra"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#fujifilm"
+      ]
+    },
+    "KodakTMax400": {
+      "general": [
+        "#tmax400",
+        "#kodaktmax400"
+      ],
+      "priority": [
+        "#MadeWithKodak"
+      ],
+      "bluesky": [
+        "#kodak",
+        "#madewithkodak"
+      ]
+    },
+    "Gold200": {
+      "general": [
+        "#gold200",
+        "#gold200film",
+        "#kodakfilm",
+        "#kodakgold200"
+      ],
+      "priority": [
+        "#MadeWithKodak"
+      ],
+      "bluesky": [
+        "#kodak",
+        "#madewithkodak"
+      ]
+    },
+    "Lomography100": {
+      "general": [
+        "#lomography100"
+      ],
+      "priority": [
+        "@lomography",
+        "#HeyLomography"
+      ],
+      "bluesky": [
+        "#lomography"
+      ]
+    },
+    "LomographyMetro": {
+      "general": [
+        "#lomographymetropolis"
+      ],
+      "priority": [
+        "@lomography",
+        "#HeyLomography"
+      ],
+      "bluesky": [
+        "#lomography"
+      ]
+    },
+    "LomographyPurple": {
+      "general": [
+        "#lomographypurple"
+      ],
+      "priority": [
+        "@lomography",
+        "#HeyLomography"
+      ],
+      "bluesky": [
+        "#lomography"
+      ]
+    },
+    "Portra160": {
+      "general": [
+        "#portra160"
+      ],
+      "priority": [
+        "#MadeWithKodak"
+      ],
+      "bluesky": [
+        "#portra160",
+        "#kodak",
+        "#madewithkodak"
+      ]
+    },
+    "Portra400": {
+      "general": [
+        "#portra400"
+      ],
+      "priority": [
+        "#MadeWithKodak"
+      ],
+      "bluesky": [
+        "#portra400",
+        "#kodak",
+        "#madewithkodak"
+      ]
+    },
+    "Portra800": {
+      "general": [
+        "#portra800"
+      ],
+      "priority": [
+        "#MadeWithKodak"
+      ],
+      "bluesky": [
+        "#portra800",
+        "#kodak",
+        "#madewithkodak"
+      ]
+    },
+    "Ektar100": {
+      "general": [
+        "#ektar100",
+        "#kodakektar100"
+      ],
+      "priority": [
+        "#MadeWithKodak"
+      ],
+      "bluesky": [
+        "#kodak",
+        "#madewithkodak"
+      ]
+    },
+    "LomographyTurquoise": {
+      "general": [
+        "#lomographyturquoise"
+      ],
+      "priority": [
+        "@lomography",
+        "#HeyLomography"
+      ],
+      "bluesky": [
+        "#lomography"
+      ]
+    },
+    "IlfordDelta3200": {
+      "general": [
+        "#ilford",
+        "#delta3200"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#ilford",
+        "#delta3200"
+      ]
+    },
+    "IlfordHP5": {
+      "general": [
+        "#ilford",
+        "#hp5"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#ilford",
+        "#hp5"
+      ]
+    },
+    "KodakUltramax400": {
+      "general": [
+        "#kodak",
+        "#ultramax400"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#kodak",
+        "#ultramax400"
+      ]
+    },
+    "FujiPro160": {
+      "general": [
+        "#fujifilm",
+        "#pro160"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#fujifilm",
+        "#pro160"
+      ]
+    },
+    "Kentmere400": {
+      "general": [
+        "#kentmere400"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#kentmere400"
+      ]
+    },
+    "Kodak400TX": {
+      "general": [
+        "#kodak",
+        "#400tx"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#kodak",
+        "#400tx"
+      ]
+    }
+  },
+  "Place": {
+    "Mexico": {
+      "Baja": {
+        "general": [
+          "#lapaz",
+          "#bajacalifornia",
+          "#baja"
+        ],
+        "priority": [],
+        "bluesky": []
+      },
+      "Country": {
+        "general": [
+          "#mexico",
+          "#mexicomagico",
+          "#mexicotravel",
+          "#mexicolindo"
+        ],
+        "priority": [
+          "#fotoexploramx"
+        ],
+        "bluesky": [
+          "#mexico"
+        ]
+      },
+      "MexicoCity": {
+        "general": [
+          "#cdmx",
+          "#mexicocity",
+          "#mexicodf"
+        ],
+        "priority": [],
+        "bluesky": [
+          "#mexicocity",
+          "#cdmx"
+        ]
+      }
+    },
+    "USA": {
+      "Arizona": {
+        "State": {
+          "general": [
+            "#arizona",
+            "#az"
+          ],
+          "priority": [],
+          "bluesky": [
+            "#arizona"
+          ]
+        },
+        "ApacheJunction": {
+          "general": [
+            "#myphx",
+            "#cactus",
+            "#cactuslover",
+            "#cactusgram",
+            "#apachejunction",
+            "#phoenix"
+          ],
+          "priority": [],
+          "bluesky": []
+        }
+      },
+      "Colorado": {
+        "State": {
+          "general": [
+            "#colorado",
+            "#coloradophotographer",
+            "#coloradophotography",
+            "#coloradolove"
+          ],
+          "priority": [],
+          "bluesky": [
+            "#colorado"
+          ]
+        }
+      },
+      "Louisiana": {
+        "NOLA": {
+          "general": [
+            "#nolalove",
+            "#neworleans",
+            "#neworleansphotography",
+            "#nola",
+            "#nolalife"
+          ],
+          "priority": [],
+          "bluesky": []
+        }
+      },
+      "Montana": {
+        "State": {
+          "general": [
+            "#montana",
+            "#montanacolors",
+            "#montanalife",
+            "#montanaliving",
+            "#montanaphotographer"
+          ],
+          "priority": [],
+          "bluesky": [
+            "#montana"
+          ]
+        }
+      },
+      "Utah": {
+        "State": {
+          "general": [
+            "#utah",
+            "#utahphotographer",
+            "#utahphotography",
+            "#utahisbeautiful",
+            "#utahtravels"
+          ],
+          "priority": [
+            "#utahscanyoncountry",
+            "@only.in.utah",
+            "@visitmoab",
+            "#visitmoab"
+          ],
+          "bluesky": [
+            "#utah"
+          ]
+        }
+      },
+      "Vermont": {
+        "State": {
+          "general": [
+            "@vermonttourism",
+            "#vermont",
+            "#newenglandphotography",
+            "#thisisvermont",
+            "#vermontlife",
+            "#vermontshots"
+          ],
+          "priority": [],
+          "bluesky": []
+        }
+      }
+    },
+    "NationalPark": {
+      "Arches": {
+        "general": [
+          "#archesnationalpark"
+        ],
+        "priority": [
+          "#archesnps",
+          "@archesnps",
+          "#nationalparkgeek"
+        ],
+        "bluesky": [
+          "#nationalparks",
+          "#arches"
+        ]
+      },
+      "Banff": {
+        "general": [
+          "#banff",
+          "#banffnationalpark",
+          "#banffcanada",
+          "#banffalberta"
+        ],
+        "priority": [
+          "@banff.national.park"
+        ],
+        "bluesky": [
+          "#nationalparks",
+          "#banff"
+        ]
+      },
+      "Glacier": {
+        "general": [
+          "#glaciernationalpark"
+        ],
+        "priority": [
+          "#glaciernps",
+          "@glaciernps",
+          "#nationalparkgeek"
+        ],
+        "bluesky": [
+          "#nationalparks",
+          "#glaciernationalpark"
+        ]
+      }
+    },
+    "Iceland": {
+      "Country": {
+        "general": [
+          "#iceland",
+          "#icelandtravel",
+          "#icelandtrip",
+          "#icelandnature"
+        ],
+        "priority": [],
+        "bluesky": [
+          "#iceland"
+        ]
+      }
+    }
+  },
+  "PhotoType": {
+    "Animals": {
+      "general": [
+        "#animalkingdom",
+        "#naturewanderers",
+        "#animallovers",
+        "#everything_animals"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#animals"
+      ]
+    },
+    "Architecture": {
+      "general": [
+        "#architecture",
+        "#architecturelovers",
+        "#architecturephotography"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#architecture"
+      ]
+    },
+    "Beach": {
+      "general": [
+        "#beautifulbeaches",
+        "#beach",
+        "#beaches"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#beach"
+      ]
+    },
+    "BlackAndWhite": {
+      "general": [
+        "#bnw",
+        "#bnwphotography",
+        "#bnwmood",
+        "#bnw_captures",
+        "#bnwphoto"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#blackandwhite",
+        "#monochrome",
+        "#bnw",
+        "#bnw_captures"
+      ]
+    },
+    "Cars": {
+      "general": [
+        "#cars",
+        "#carsdaily",
+        "#carlovers",
+        "#carswithoutlimits",
+        "#carstagram"
+      ],
+      "priority": [],
+      "bluesky": []
+    },
+    "Clouds": {
+      "general": [
+        "#clouds",
+        "#cloudscape",
+        "#cloudchaser",
+        "#cloudphotography",
+        "#cloudlovers"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#clouds",
+        "#cloudscape"
+      ]
+    },
+    "Flowers": {
+      "general": [
+        "#flowers",
+        "#flowerslovers",
+        "#flowersphotography",
+        "#flowersmakemehappy"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#flowers",
+        "#flores"
+      ]
+    },
+    "Landscape": {
+      "general": [
+        "#landscapephotography",
+        "#landscape_collection",
+        "#landscapelover"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#landscapephotography",
+        "#landscape"
+      ]
+    },
+    "Leaves": {
+      "general": [
+        "#leafpeeping",
+        "#autumnleaves",
+        "#fallcolors"
+      ],
+      "priority": [],
+      "bluesky": []
+    },
+    "Portrait": {
+      "general": [
+        "#portraitphotography",
+        "#portrait"
+      ],
+      "priority": [
+        "#mundusmag"
+      ],
+      "bluesky": [
+        "#portraitphotography",
+        "#portrait"
+      ]
+    },
+    "Selfie": {
+      "general": [
+        "#selfie",
+        "#photographicselfportrait",
+        "#artisticselfie"
+      ],
+      "priority": [],
+      "bluesky": []
+    },
+    "Stars": {
+      "general": [
+        "#astrophotography",
+        "#moonlovers",
+        "#astronomy",
+        "#nightshooters",
+        "#nightimages"
+      ],
+      "priority": [
+        "@milkyway_nightscape",
+        "#milkyway_nightscape_"
+      ],
+      "bluesky": [
+        "#astrophotography",
+        "#astrophoto"
+      ]
+    },
+    "Shadows": {
+      "general": [
+        "#shadows",
+        "#shadowart"
+      ],
+      "priority": [
+        "#shadows_magazine"
+      ],
+      "bluesky": [
+        "#shadows"
+      ]
+    },
+    "Storms": {
+      "general": [
+        "#lightening",
+        "#stormphotography",
+        "#stormchasers",
+        "#stormclouds",
+        "#thunderstorms",
+        "#dpsp_rainshots"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#storm",
+        "#rain"
+      ]
+    },
+    "Street": {
+      "general": [
+        "#street_perfection",
+        "#streetphotography",
+        "#street",
+        "#streetphotographers",
+        "#streetclassics",
+        "#streetphotographer"
+      ],
+      "priority": [
+        "#streetdreamsmag"
+      ],
+      "bluesky": [
+        "#streetart",
+        "#streetphotography"
+      ]
+    },
+    "Sunsets": {
+      "general": [
+        "#sunset",
+        "#sunsetlovers",
+        "#sunsets"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#sunset",
+        "#colors"
+      ]
+    }
+  },
+  "SocialEvent": {
+    "DayOfTheDead": {
+      "general": [
+        "#dayofthedead",
+        "#DiaDeMuertos",
+        "#DiaDeLosMuertos",
+        "#ddlm",
+        "#marigolds"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#diadelosmuertos",
+        "#dayofthedead"
+      ]
+    },
+    "MexicoCityFireworksFestival": {
+      "general": [
+        "#torostultepec",
+        "#pirotecniatultepec",
+        "#tultepec",
+        "#tultepeccapitaldelapirotécnia",
+        "#fireworks"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#fireworks"
+      ]
+    },
+    "PrideCelebration": {
+      "general": [
+        "#pride",
+        "#pridemonth",
+        "#equality"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#pride"
+      ]
+    },
+    "ChineseNewYear": {
+      "general": [
+        "#chinesenewyear",
+        "#yearofthesnake"
+      ],
+      "priority": [],
+      "bluesky": [
+        "#chinesenewyear",
+        "#yearofthesnake"
+      ]
+    }
+  },
+  "Special": {
+    "NatGeoYourShot": {
+      "general": [],
+      "priority": [
+        "#yourshotphotographer"
+      ],
+      "bluesky": []
+    },
+    "FotoHercules": {
+      "general": [],
+      "priority": [
+        "#fotohercules",
+        "@fotohercules"
+      ],
+      "bluesky": []
+    },
+    "PhotographyTips": {
+      "general": [],
+      "priority": [
+        "#photographylearning",
+        "#photographytutorials",
+        "#photographytipsandtricks",
+        "#photographytips",
+        "#photographyskills",
+        "#photography101"
+      ],
+      "bluesky": []
+    }
+  }
+}
