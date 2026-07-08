@@ -174,10 +174,6 @@ verify_contest_scout_env() {
         log_warn "contest-scout: no Claude credential yet. On your laptop run 'claude setup-token'"
         log_warn "  and set CLAUDE_CODE_OAUTH_TOKEN in ${env_file}"
     fi
-    if grep -Eq "your-app-token|your-user-key" "${env_file}"; then
-        log_warn "contest-scout: Pushover keys missing. Create an app at https://pushover.net/apps/build"
-        log_warn "  and set PUSHOVER_APP_TOKEN / PUSHOVER_USER_KEY in ${env_file}"
-    fi
 }
 
 # Create config directory

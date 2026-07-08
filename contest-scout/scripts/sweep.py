@@ -4,8 +4,9 @@
 Runs Claude Code headless with the repo's /find-contests skill, which
 verifies contest deadlines/eligibility/rights on official pages and updates
 social-poster/config/contest-deadlines.md. If the file changed, commits and
-pushes, then sends a Pushover notification with Claude's summary so there's
-a phone nudge that it's time to review the month's contests.
+pushes, then sends Claude's summary through the same contact-form service
+the portfolio sites use (contact-form.nfshost.com) — the nudge that it's
+time to review the month's contests.
 
 Every outcome notifies — including failures — so a silent month always
 means "the timer didn't fire," never "it broke quietly."
@@ -26,8 +27,13 @@ import requests
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEADLINES_FILE = "social-poster/config/contest-deadlines.md"
 
-PUSHOVER_URL = "https://api.pushover.net/1/messages.json"
-PUSHOVER_MESSAGE_LIMIT = 1024
+# Same relay the portfolio contact forms POST to (see
+# Engineering-Portfolio-and-Blog frontend/src/sharedComponents/ContactForm.tsx).
+CONTACT_FORM_URL = os.environ.get(
+    "CONTACT_FORM_URL", "https://contact-form.nfshost.com/contact"
+)
+# The contact forms cap messages at 800 chars client-side; match it.
+MESSAGE_LIMIT = 800
 
 # The skill does the real work; the final reply becomes the notification.
 PROMPT = (
@@ -96,19 +102,16 @@ def commit_and_push() -> str:
     return "Updated contest-deadlines.md (committed & pushed)."
 
 
-def notify(title: str, message: str, priority: int = 0) -> None:
-    """Send a Pushover notification (simple Message API POST)."""
+def notify(subject: str, message: str) -> None:
+    """Send the summary through the contact-form relay (JSON POST)."""
     resp = requests.post(
-        PUSHOVER_URL,
-        data={
-            "token": os.environ["PUSHOVER_APP_TOKEN"],
-            "user": os.environ["PUSHOVER_USER_KEY"],
-            "title": title,
-            "message": message[:PUSHOVER_MESSAGE_LIMIT],
-            "priority": priority,
-            "url": "https://github.com/TravisBumgarner/rasppi-utils/blob/main/"
-                   + DEADLINES_FILE,
-            "url_title": "Open contest-deadlines.md",
+        CONTACT_FORM_URL,
+        json={
+            "name": "Contest Scout",
+            "email": "",
+            "subject": subject,
+            "message": message[:MESSAGE_LIMIT],
+            "website": "rasppi-utils",
         },
         timeout=30,
     )
@@ -124,16 +127,16 @@ def main() -> None:
         git_status = commit_and_push()
     except Exception as exc:  # noqa: BLE001 - failure must still notify.
         notify(
-            f"Contest sweep failed — {month}",
-            f"{type(exc).__name__}: {str(exc)[:600]}\n"
+            f"Contest sweep FAILED — {month}",
+            f"{type(exc).__name__}: {str(exc)[:500]}\n"
             "Check: journalctl -u contest-scout",
-            priority=1,
         )
         raise
 
     notify(
-        f"📸 Contest sweep — {month}",
-        f"{summary}\n\n{git_status}\nTime to review this month's contests.",
+        f"📸 Time for monthly contests — {month}",
+        f"{summary}\n\n{git_status}\n"
+        "Full list: social-poster/config/contest-deadlines.md",
     )
     print(f"contest-scout: done. {git_status}")
 

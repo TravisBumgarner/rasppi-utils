@@ -5,10 +5,11 @@ headless with this repo's `/find-contests` skill
 ([.claude/skills/find-contests](../.claude/skills/find-contests/SKILL.md)),
 which researches contest deadlines/eligibility/rights on official pages and
 updates [social-poster/config/contest-deadlines.md](../social-poster/config/contest-deadlines.md).
-Changes are committed and pushed, and a **Pushover** notification lands on
-your phone with the summary — the nudge that it's time to review the month's
-contests. Failures notify too (high priority), so silence always means "the
-timer didn't fire," never "it broke quietly."
+Changes are committed and pushed, and the summary is sent as a JSON POST
+through the same **contact-form relay** the portfolio sites use
+(`contact-form.nfshost.com`), subject "📸 Time for monthly contests" — the
+nudge to go review them. Failures notify too (subject says FAILED), so
+silence always means "the timer didn't fire," never "it broke quietly."
 
 ## Setup
 
@@ -19,15 +20,15 @@ allowlists the repo for root git, prompts once for a GitHub PAT if pushing
 isn't authorized, installs the service + timer via `sync.sh`, and warns
 about any placeholder credentials left in the `.env`.
 
-Two credentials come from external accounts, so they stay manual — paste
-them into `/etc/rasppi-utils/contest-scout/.env`:
+One credential comes from an external login, so it stays manual — paste it
+into `/etc/rasppi-utils/contest-scout/.env`:
 
-1. **Claude token** — on any machine where you're logged in to Claude, run
-   `claude setup-token` and set `CLAUDE_CODE_OAUTH_TOKEN` (uses your
-   subscription; alternatively set `ANTHROPIC_API_KEY` for API billing).
-2. **Pushover** — create an application at <https://pushover.net/apps/build>
-   (`PUSHOVER_APP_TOKEN`) and grab your user key from the dashboard
-   (`PUSHOVER_USER_KEY`).
+- **Claude token** — on any machine where you're logged in to Claude, run
+  `claude setup-token` and set `CLAUDE_CODE_OAUTH_TOKEN` (uses your
+  subscription; alternatively set `ANTHROPIC_API_KEY` for API billing).
+
+Notifications need no credentials — the contact-form relay is a public
+endpoint (override with `CONTACT_FORM_URL` if it ever moves).
 
 If push auth is ever missing, runs still work — the notification will say
 the commit is stranded on the Pi's clone.

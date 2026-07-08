@@ -37,28 +37,27 @@ def test_commit_and_push_reports_stranded_commit_on_push_failure():
     assert "push failed" in status
 
 
-def test_notify_truncates_to_pushover_limit(monkeypatch):
-    monkeypatch.setenv("PUSHOVER_APP_TOKEN", "t")
-    monkeypatch.setenv("PUSHOVER_USER_KEY", "u")
+def test_notify_posts_contact_form_json_and_truncates():
     resp = MagicMock()
     with patch("requests.post", return_value=resp) as post:
-        sweep.notify("title", "x" * 5000)
-    sent = post.call_args.kwargs["data"]
-    assert len(sent["message"]) == sweep.PUSHOVER_MESSAGE_LIMIT
-    assert sent["token"] == "t" and sent["user"] == "u"
+        sweep.notify("📸 Time for monthly contests — July 2026", "x" * 5000)
+    assert post.call_args.args[0] == sweep.CONTACT_FORM_URL
+    sent = post.call_args.kwargs["json"]
+    assert sent["subject"] == "📸 Time for monthly contests — July 2026"
+    assert len(sent["message"]) == sweep.MESSAGE_LIMIT
+    assert sent["name"] == "Contest Scout"
+    assert sent["website"] == "rasppi-utils"
     resp.raise_for_status.assert_called_once()
 
 
-def test_failure_sends_high_priority_notification(monkeypatch):
-    monkeypatch.setenv("PUSHOVER_APP_TOKEN", "t")
-    monkeypatch.setenv("PUSHOVER_USER_KEY", "u")
+def test_failure_still_notifies():
     with patch.object(sweep, "_git", return_value=_proc()), \
          patch.object(sweep, "run_sweep", side_effect=RuntimeError("boom")), \
          patch("requests.post") as post:
         with pytest.raises(RuntimeError):
             sweep.main()
-    sent = post.call_args.kwargs["data"]
-    assert sent["priority"] == 1
+    sent = post.call_args.kwargs["json"]
+    assert "FAILED" in sent["subject"]
     assert "boom" in sent["message"]
 
 
