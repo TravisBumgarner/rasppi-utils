@@ -159,7 +159,29 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
     }
   };
 
-  // Slot assignment: photos fill the next free slots in upload order.
+  // Display order — null means upload order. Shuffling reorders which photo
+  // lands in which slot; new uploads append and deleted items drop out.
+  const [order, setOrder] = useState<number[] | null>(null);
+  const orderedItems = useMemo(() => {
+    if (order === null) {
+      return items;
+    }
+    const byId = new Map(items.map((item) => [item.id, item]));
+    const known = order.flatMap((id) => byId.get(id) ?? []);
+    const inOrder = new Set(order);
+    return [...known, ...items.filter((item) => !inOrder.has(item.id))];
+  }, [items, order]);
+
+  const shuffleOrder = () => {
+    const ids = orderedItems.map((item) => item.id);
+    for (let i = ids.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [ids[i], ids[j]] = [ids[j], ids[i]];
+    }
+    setOrder(ids);
+  };
+
+  // Slot assignment: photos fill the next free slots in display order.
   // Occupied = already-scheduled posts, so bulk batches never double-book.
   const occupied = useMemo(
     () => new Set((posts ?? []).map((p) => p.scheduled_at)),
@@ -187,7 +209,7 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
     approve.mutate(
       {
         account_ids: selectedIds,
-        items: items.map((item, index) => ({
+        items: orderedItems.map((item, index) => ({
           id: item.id,
           scheduled_at: toApiISO(slots[index]),
           captions: captionsFor(item),
@@ -326,7 +348,18 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
                   : 'Drop photos here, or click to browse'}
               </div>
             )}
-            {items.map((item, index) => (
+            {items.length > 1 && (
+              <div className="bulk-review-toolbar">
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={shuffleOrder}
+                >
+                  🔀 Shuffle order
+                </button>
+              </div>
+            )}
+            {orderedItems.map((item, index) => (
               <div key={item.id} className="bulk-item">
                 <img className="bulk-item-thumb" src={item.image_url} alt="" />
                 <div className="bulk-item-main">

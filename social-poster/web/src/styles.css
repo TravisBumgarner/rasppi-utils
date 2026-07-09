@@ -1383,6 +1383,11 @@ textarea {
   justify-content: center;
 }
 
+.bulk-review-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .bulk-item {
   display: flex;
   gap: 12px;
