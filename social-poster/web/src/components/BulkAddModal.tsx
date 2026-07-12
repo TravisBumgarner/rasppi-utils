@@ -274,6 +274,16 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
     lastScheduledAt,
   ]);
 
+  // When the last photo in this batch posts — i.e. when the queue runs dry.
+  // Only meaningful once every photo has a slot.
+  const queueEmptiesAt = useMemo(
+    () =>
+      items.length > 0 && slots.length === items.length
+        ? slots[slots.length - 1]
+        : null,
+    [items.length, slots]
+  );
+
   const anyPending = items.some((i) => i.tag_status === 'pending');
   const scheduleEmpty = effectiveSchedule.slots.length === 0;
   const scheduleByDay = useMemo(
@@ -383,6 +393,19 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
                 Occupied slots are always skipped, so nothing double-books.
                 Start is clamped to now — nothing schedules in the past.
               </span>
+            </div>
+
+            <div className="field">
+              <span className="field-label">Queue empties</span>
+              {queueEmptiesAt ? (
+                <span>{formatDateTime(queueEmptiesAt)}</span>
+              ) : (
+                <span className="muted">
+                  {items.length === 0
+                    ? 'Drop photos to see when the queue runs dry'
+                    : 'Set the schedule to fill every photo'}
+                </span>
+              )}
             </div>
 
             <div className="field">
