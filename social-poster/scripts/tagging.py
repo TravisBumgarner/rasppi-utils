@@ -119,6 +119,7 @@ _FILM_STOCK_NAMES: Dict[str, str] = {
     f"{TAG_ROOT}|FilmType|IlfordHP5": "Ilford HP5 Plus",
     f"{TAG_ROOT}|FilmType|Kentmere400": "Kentmere 400",
     f"{TAG_ROOT}|FilmType|Kodak400TX": "Kodak Tri-X 400",
+    f"{TAG_ROOT}|FilmType|KodakColorPlus200": "Kodak ColorPlus 200",
     f"{TAG_ROOT}|FilmType|KodakTMax400": "Kodak T-Max 400",
     f"{TAG_ROOT}|FilmType|KodakUltramax400": "Kodak UltraMax 400",
     f"{TAG_ROOT}|FilmType|Lomography100": "Lomography Color Negative 100",

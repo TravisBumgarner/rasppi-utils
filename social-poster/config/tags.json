@@ -301,6 +301,23 @@
         "#madewithkodak"
       ]
     },
+    "KodakColorPlus200": {
+      "general": [
+        "#kodakcolorplus200",
+        "#colorplus200",
+        "#kodakcolorplus",
+        "#kodakfilm"
+      ],
+      "priority": [
+        "#MadeWithKodak",
+        "@kodakprofessional"
+      ],
+      "bluesky": [
+        "#kodak",
+        "#colorplus200",
+        "#madewithkodak"
+      ]
+    },
     "Lomography100": {
       "general": [
         "#lomography100"
