@@ -134,11 +134,13 @@ export interface Settings {
 export type IngestTagStatus = 'pending' | 'tagged' | 'failed';
 
 /** One candidate tag in the draggable pill editor. `priority` hubs get a star;
- * `mention` (@-tags) don't count toward Instagram's 5-hashtag cap. */
+ * `mention` (@-tags) are capped separately from hashtags; `selected` is whether
+ * it currently posts (the user toggles this by dragging pills between groups). */
 export interface TagPill {
   text: string;
   priority: boolean;
   mention: boolean;
+  selected: boolean;
 }
 
 /** The tag pool for one platform: the fixed caption `prefix` (title,

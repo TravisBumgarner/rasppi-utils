@@ -490,7 +490,12 @@ def extract_tag_pools(image_path: str) -> Dict[str, Dict]:
     prefix = _render_caption(fields, title, description, [])
 
     def _pill(text: str, priority: bool) -> Dict:
-        return {"text": text, "priority": priority, "mention": text.startswith("@")}
+        return {
+            "text": text,
+            "priority": priority,
+            "mention": text.startswith("@"),
+            "selected": False,
+        }
 
     general_only = [t for t in lists["general"] if t not in lists["priority"]]
     random.shuffle(general_only)
@@ -498,10 +503,41 @@ def extract_tag_pools(image_path: str) -> Dict[str, Dict]:
     instagram_pool += [_pill(t, False) for t in general_only]
     bluesky_pool = [_pill(t, False) for t in lists["bluesky"]]
 
+    _select_instagram_defaults(instagram_pool)
+    _select_bluesky_defaults(bluesky_pool, prefix)
+
     return {
         "instagram": {"prefix": prefix, "tags": instagram_pool},
         "bluesky": {"prefix": prefix, "tags": bluesky_pool},
     }
+
+
+def _select_instagram_defaults(pool: List[Dict]) -> None:
+    """Mark the default posting set: the first HASHTAG_LIMIT hashtags and the
+    first MENTION_LIMIT @mentions (priority-first), matching the caption."""
+    hashtags = mentions = 0
+    for tag in pool:
+        if tag["text"].startswith("#"):
+            if hashtags < INSTAGRAM_HASHTAG_LIMIT:
+                tag["selected"] = True
+                hashtags += 1
+        elif tag["text"].startswith("@"):
+            if mentions < INSTAGRAM_MENTION_LIMIT:
+                tag["selected"] = True
+                mentions += 1
+        else:
+            tag["selected"] = True
+
+
+def _select_bluesky_defaults(pool: List[Dict], prefix: str) -> None:
+    """Select the longest leading run of tags whose caption fits 300 chars."""
+    for kept in range(len(pool), -1, -1):
+        line = " ".join(t["text"] for t in pool[:kept])
+        caption = f"{prefix}\n{line}" if line else prefix
+        if len(caption) <= BLUESKY_CHAR_LIMIT:
+            for i, tag in enumerate(pool):
+                tag["selected"] = i < kept
+            return
 
 
 def keyword_paths(image_path: str) -> List[List[str]]:

@@ -428,6 +428,32 @@ def test_extract_tag_pools_structure_and_star_flags(tmp_path, monkeypatch):
     assert all(not t["priority"] for t in pools["bluesky"]["tags"])
 
 
+def test_extract_tag_pools_selects_default_posting_set(tmp_path, monkeypatch):
+    # 7 hashtags + 4 mentions: default selection caps at 5 hashtags + 3 mentions.
+    tree = {
+        "Special": {
+            "Big": {
+                "general": [f"#g{i}" for i in range(4)] + ["@gm0"],
+                "priority": [f"#p{i}" for i in range(3)] + ["@pm0", "@pm1", "@pm2"],
+                "bluesky": [],
+            }
+        }
+    }
+    tags_path = tmp_path / "tags.json"
+    tags_path.write_text(json.dumps(tree))
+    monkeypatch.setattr(tagging, "TAGS_PATH", tags_path)
+
+    photo = tmp_path / "photo.jpg"
+    _write_photo(photo, ["cameracoffeewander|Special|Big"], with_exif=False)
+
+    ig = tagging.extract_tag_pools(str(photo))["instagram"]["tags"]
+    selected = [t["text"] for t in ig if t["selected"]]
+    assert sum(t.startswith("#") for t in selected) == 5  # first 5 hashtags
+    assert sum(t.startswith("@") for t in selected) == 3  # first 3 mentions
+    # Priority hubs are selected first (they lead the pool).
+    assert "#p0" in selected and "@pm0" in selected
+
+
 def test_bluesky_caption_fits_300_chars(tmp_path, monkeypatch):
     tree = {
         "Special": {

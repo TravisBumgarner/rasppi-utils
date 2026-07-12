@@ -18,7 +18,7 @@ import {
   toApiISO,
 } from '../utils/datetime';
 import { DAY_SHORT, generateSlots, timesByDay } from '../utils/schedule';
-import { captionFromPool } from '../utils/tags';
+import { captionFromPool, withSelection } from '../utils/tags';
 import type {
   BulkSchedule,
   Captions,
@@ -149,8 +149,10 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
 
   const poolsForItem = (item: IngestItem): TagPools =>
     poolEdits[item.id] ?? item.tag_pools ?? {};
-  const poolFor = (item: IngestItem, platform: Platform) =>
-    poolsForItem(item)[platform];
+  const poolFor = (item: IngestItem, platform: Platform) => {
+    const pool = poolsForItem(item)[platform];
+    return pool ? withSelection(platform, pool) : undefined;
+  };
 
   // A platform's caption comes from its pool (prefix + active tags) when one
   // exists, else the free-text edit / server caption.
@@ -167,7 +169,7 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
     for (const platform of selectedPlatforms) {
       const pool = pools[platform];
       captions[platform] = pool
-        ? captionFromPool(platform, pool)
+        ? captionFromPool(platform, withSelection(platform, pool))
         : edits[`${item.id}:${platform}`] ?? item.captions[platform] ?? '';
     }
     return captions;
@@ -447,6 +449,10 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
           <div
             className={`bulk-review ${dragOver ? 'bulk-review--dragover' : ''}`}
             onDragOver={(e) => {
+              // Only react to file drags — not pill reordering inside a photo.
+              if (!e.dataTransfer.types.includes('Files')) {
+                return;
+              }
               e.preventDefault();
               setDragOver(true);
             }}
@@ -456,6 +462,9 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
               }
             }}
             onDrop={(e) => {
+              if (!e.dataTransfer.types.includes('Files')) {
+                return;
+              }
               e.preventDefault();
               setDragOver(false);
               onFilesChosen(e.dataTransfer.files);
