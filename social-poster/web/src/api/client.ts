@@ -11,6 +11,8 @@ import type {
   LogEntry,
   Post,
   Settings,
+  TagCheckResult,
+  TagPools,
   TaggingPreview,
   UpdatePostInput,
 } from './types';
@@ -161,12 +163,15 @@ export function uploadIngestImages(files: File[]): Promise<IngestItem[]> {
 
 export function updateIngestItem(
   id: number,
-  captions: Captions
+  captions: Captions,
+  tagPools?: TagPools
 ): Promise<IngestItem> {
   return request<IngestItem>(`/ingest/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ captions }),
+    body: JSON.stringify(
+      tagPools ? { captions, tag_pools: tagPools } : { captions }
+    ),
   });
 }
 
@@ -188,6 +193,19 @@ export function generateCaptions(image: File): Promise<TaggingPreview> {
   const form = new FormData();
   form.append('image', image);
   return request<TaggingPreview>('/tagging/preview', {
+    method: 'POST',
+    body: form,
+  });
+}
+
+/** Check a batch of photos for Lightroom keywords not yet registered in the
+ * tag tree (no staging). */
+export function checkTags(files: File[]): Promise<TagCheckResult> {
+  const form = new FormData();
+  for (const file of files) {
+    form.append('images', file);
+  }
+  return request<TagCheckResult>('/tagging/check', {
     method: 'POST',
     body: form,
   });

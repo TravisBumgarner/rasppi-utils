@@ -17,12 +17,11 @@ info. This module turns that into ready-to-review captions:
    focal length), with the same per-camera label overrides as the old tool.
    Film posts use the analog convention instead: one ``📷 <camera> /
    🎞️ <film stock>`` line (Bluesky keyword feeds match on it).
-4. Render the caption template per platform. Instagram gets every priority
-   item (feature hubs — hashtags and @mentions), then a random draw from the
-   general tags up to 5 hashtags total: Instagram deprioritizes posts with
-   more than ~5 hashtags (2026 guidance), and shuffling varies the tag mix
-   across posts. Bluesky gets its own tag set, trimmed from the end so the
-   caption fits the 300-character post limit.
+4. Render the caption template per platform. Instagram is capped at 5 hashtags
+   and 3 @mentions (2026 guidance deprioritizes posts with more), priority
+   hubs first, then a random draw from the general tags tops up the hashtag
+   budget so the mix varies across posts. Bluesky gets its own tag set,
+   trimmed from the end so the caption fits the 300-character post limit.
 
 Bulk ingestion calls ``extract_captions`` once per uploaded image in a
 background thread. A raised ValueError marks that ingest item's tagging as
@@ -47,9 +46,11 @@ TAGS_PATH = Path(__file__).parent.parent / "config" / "tags.json"
 # gallery organization) are ignored.
 TAG_ROOT = "cameracoffeewander"
 
-# Instagram deprioritizes posts with more than ~5 hashtags; @mentions don't
-# count toward that. Priority items (feature hubs) are never dropped.
+# Instagram deprioritizes posts with more than ~5 hashtags. Hashtags and
+# @mentions are capped independently (mentions don't count toward the hashtag
+# penalty, but a wall of @mentions still reads as spam), priority hubs first.
 INSTAGRAM_HASHTAG_LIMIT = 5
+INSTAGRAM_MENTION_LIMIT = 3
 
 # Bluesky rejects posts over 300 characters (graphemes; len() is close enough
 # for our ASCII tags). Tags are dropped from the end until the caption fits.
@@ -119,6 +120,7 @@ _FILM_STOCK_NAMES: Dict[str, str] = {
     f"{TAG_ROOT}|FilmType|IlfordHP5": "Ilford HP5 Plus",
     f"{TAG_ROOT}|FilmType|Kentmere400": "Kentmere 400",
     f"{TAG_ROOT}|FilmType|Kodak400TX": "Kodak Tri-X 400",
+    f"{TAG_ROOT}|FilmType|KodakColorPlus200": "Kodak ColorPlus 200",
     f"{TAG_ROOT}|FilmType|KodakTMax400": "Kodak T-Max 400",
     f"{TAG_ROOT}|FilmType|KodakUltramax400": "Kodak UltraMax 400",
     f"{TAG_ROOT}|FilmType|Lomography100": "Lomography Color Negative 100",
@@ -275,11 +277,12 @@ def _lookup(tree: Dict, parts: List[str]) -> Optional[List[Dict]]:
     return list(reversed(buckets))
 
 
-def _generate_social_tags(keywords: List[str]) -> Dict[str, List[str]]:
-    """Map ``cameracoffeewander|...`` keywords to per-platform tag lists.
+def _collect_tag_lists(keywords: List[str]) -> Dict[str, List[str]]:
+    """Gather the raw per-platform tag lists for a photo's keywords, deduped.
 
-    Raises ValueError naming any keyword the tag tree doesn't know, so the
-    tree and the Lightroom hierarchy stay in sync (same contract as the old
+    Returns ``{"priority": [...], "general": [...], "bluesky": [...]}`` in tag-
+    tree order. Raises ValueError naming any keyword the tree doesn't know, so
+    the tree and the Lightroom hierarchy stay in sync (same contract as the old
     tool).
     """
     tree = _load_tag_tree()
@@ -307,25 +310,58 @@ def _generate_social_tags(keywords: List[str]) -> Dict[str, List[str]]:
     if errors:
         raise ValueError("; ".join(errors))
 
-    # Every priority item is kept (feature hubs are the point); the remaining
-    # hashtag budget is filled with a random draw from the general tags so the
-    # mix varies post to post.
-    instagram = list(dict.fromkeys(priority))
-    hashtags = sum(1 for t in instagram if t.startswith("#"))
-    pool = [t for t in dict.fromkeys(general) if t not in instagram]
-    random.shuffle(pool)
-    for tag in pool:
-        if tag.startswith("@"):
-            instagram.append(tag)
-        elif hashtags < INSTAGRAM_HASHTAG_LIMIT:
-            instagram.append(tag)
-            hashtags += 1
-
-    malformed = [t for t in instagram if t[:2] in ("##", "@@", "#@", "@#")]
+    malformed = [
+        t
+        for t in priority + general + bluesky
+        if t[:2] in ("##", "@@", "#@", "@#")
+    ]
     if malformed:
         raise ValueError(f"Malformed tag(s) in tag tree: {malformed}")
 
-    return {"instagram": instagram, "bluesky": list(dict.fromkeys(bluesky))}
+    return {
+        "priority": list(dict.fromkeys(priority)),
+        "general": list(dict.fromkeys(general)),
+        "bluesky": list(dict.fromkeys(bluesky)),
+    }
+
+
+def _generate_social_tags(keywords: List[str]) -> Dict[str, List[str]]:
+    """Map ``cameracoffeewander|...`` keywords to the per-platform tag lists
+    that actually post: Instagram capped/selected, Bluesky as-is."""
+    lists = _collect_tag_lists(keywords)
+    priority = lists["priority"]
+    general = lists["general"]
+    bluesky = lists["bluesky"]
+
+    # Hashtags and @mentions are each hard-capped (5 and 3), priority hubs
+    # first; the leftover hashtag budget is topped up from a random draw of the
+    # general tags so the mix varies post to post.
+    instagram: List[str] = []
+    hashtags = 0
+    mentions = 0
+
+    def _add(tag: str) -> None:
+        nonlocal hashtags, mentions
+        if tag in instagram:
+            return
+        if tag.startswith("#"):
+            if hashtags >= INSTAGRAM_HASHTAG_LIMIT:
+                return
+            hashtags += 1
+        elif tag.startswith("@"):
+            if mentions >= INSTAGRAM_MENTION_LIMIT:
+                return
+            mentions += 1
+        instagram.append(tag)
+
+    for tag in priority:
+        _add(tag)
+    pool = [t for t in general if t not in instagram]
+    random.shuffle(pool)
+    for tag in pool:
+        _add(tag)
+
+    return {"instagram": instagram, "bluesky": bluesky}
 
 
 # ---------------------------------------------------------------------------
@@ -419,3 +455,170 @@ def extract_captions(image_path: str) -> Dict[str, str]:
         "bluesky": _render_bluesky_caption(fields, title, description,
                                            tags["bluesky"]),
     }
+
+
+def extract_tag_pools(image_path: str) -> Dict[str, Dict]:
+    """Build the structured tag pools for the bulk-review pill editor.
+
+    Returns per platform ``{"prefix": <caption minus the tag line>, "tags":
+    [{"text", "priority", "mention"}, ...]}``. The frontend renders the pool as
+    draggable pills and rebuilds the caption as ``prefix`` + the chosen tag
+    line, so the ordering/selection is the user's while the fixed part (title,
+    description, gear line) stays server-rendered.
+
+    Instagram's pool is priority hubs first (starred) then a shuffled draw of
+    the general tags — the shuffle gives each photo a varied but, once stored,
+    stable starting order. Bluesky has a single list (most-important-first, no
+    priority split). Raises the same ValueErrors as ``extract_captions``.
+    """
+    xmp = _read_xmp(image_path)
+    if xmp is None:
+        raise ValueError(
+            "No XMP metadata found — export from Lightroom with metadata included"
+        )
+
+    keywords = _xmp_list(xmp, "lr:hierarchicalSubject")
+    if not keywords:
+        raise ValueError("No Lightroom hierarchical keywords (lr:hierarchicalSubject)")
+
+    title = _xmp_text(xmp, "dc:title")
+    description = _xmp_text(xmp, "dc:description")
+    fields = _read_exif(image_path)
+    _apply_film_camera_tags(fields, keywords)
+
+    lists = _collect_tag_lists(keywords)
+    prefix = _render_caption(fields, title, description, [])
+
+    def _pill(text: str, priority: bool) -> Dict:
+        return {
+            "text": text,
+            "priority": priority,
+            "mention": text.startswith("@"),
+            "selected": False,
+        }
+
+    general_only = [t for t in lists["general"] if t not in lists["priority"]]
+    random.shuffle(general_only)
+    instagram_pool = [_pill(t, True) for t in lists["priority"]]
+    instagram_pool += [_pill(t, False) for t in general_only]
+    bluesky_pool = [_pill(t, False) for t in lists["bluesky"]]
+
+    _select_instagram_defaults(instagram_pool)
+    _select_bluesky_defaults(bluesky_pool, prefix)
+
+    return {
+        "instagram": {"prefix": prefix, "tags": instagram_pool},
+        "bluesky": {"prefix": prefix, "tags": bluesky_pool},
+    }
+
+
+def _select_instagram_defaults(pool: List[Dict]) -> None:
+    """Mark the default posting set: the first HASHTAG_LIMIT hashtags and the
+    first MENTION_LIMIT @mentions (priority-first), matching the caption."""
+    hashtags = mentions = 0
+    for tag in pool:
+        if tag["text"].startswith("#"):
+            if hashtags < INSTAGRAM_HASHTAG_LIMIT:
+                tag["selected"] = True
+                hashtags += 1
+        elif tag["text"].startswith("@"):
+            if mentions < INSTAGRAM_MENTION_LIMIT:
+                tag["selected"] = True
+                mentions += 1
+        else:
+            tag["selected"] = True
+
+
+def _select_bluesky_defaults(pool: List[Dict], prefix: str) -> None:
+    """Select the longest leading run of tags whose caption fits 300 chars."""
+    for kept in range(len(pool), -1, -1):
+        line = " ".join(t["text"] for t in pool[:kept])
+        caption = f"{prefix}\n{line}" if line else prefix
+        if len(caption) <= BLUESKY_CHAR_LIMIT:
+            for i, tag in enumerate(pool):
+                tag["selected"] = i < kept
+            return
+
+
+def keyword_paths(image_path: str) -> List[List[str]]:
+    """Return each ``cameracoffeewander|...`` keyword on a photo as a list of
+    hierarchy parts (root prefix stripped), e.g.
+    ``["Place", "USA", "Alaska", "State"]``. Non-root keywords are skipped.
+
+    Raises ValueError when the photo has no XMP or no hierarchical keywords —
+    the same preconditions ``extract_captions`` needs — so the caller can tell
+    "nothing to check" apart from "no metadata to check".
+    """
+    xmp = _read_xmp(image_path)
+    if xmp is None:
+        raise ValueError(
+            "No XMP metadata found — export from Lightroom with metadata included"
+        )
+
+    keywords = _xmp_list(xmp, "lr:hierarchicalSubject")
+    if not keywords:
+        raise ValueError("No Lightroom hierarchical keywords (lr:hierarchicalSubject)")
+
+    return [
+        keyword.replace(f"{TAG_ROOT}|", "").split("|")
+        for keyword in keywords
+        if TAG_ROOT in keyword
+    ]
+
+
+def _path_registered(tree: Dict, parts: List[str]) -> bool:
+    """True when every part of the hierarchy exists as a key in the tag tree."""
+    node: object = tree
+    for part in parts:
+        if not isinstance(node, dict) or part not in node:
+            return False
+        node = node[part]
+    return True
+
+
+def missing_paths(paths: List[List[str]]) -> List[str]:
+    """The ``A|B|C`` hierarchy strings that aren't fully registered in the tag
+    tree, deduplicated in first-seen order — the tags that need to be made."""
+    tree = _load_tag_tree()
+    missing: List[str] = []
+    for parts in paths:
+        if not _path_registered(tree, parts):
+            key = "|".join(parts)
+            if key not in missing:
+                missing.append(key)
+    return missing
+
+
+def tag_status_tree(paths: List[List[str]]) -> List[Dict]:
+    """Merge hierarchy ``paths`` into a nested tree annotated with whether each
+    node exists in the tag tree, pruned to only the branches that lead to a
+    missing node.
+
+    Each node is ``{"name", "exists", "children"}``. Fully-registered branches
+    are dropped (nothing to do there); a kept branch shows its existing
+    ancestors (breadcrumb context) down to the missing node(s) beneath them.
+    Children are sorted by name so the output is stable.
+    """
+    tree = _load_tag_tree()
+
+    # Merge every path into one prefix tree.
+    merged: Dict = {}
+    for parts in paths:
+        node = merged
+        for part in parts:
+            node = node.setdefault(part, {})
+
+    def build(subtree: Dict, json_node: object) -> List[Dict]:
+        nodes: List[Dict] = []
+        for name in sorted(subtree):
+            exists = isinstance(json_node, dict) and name in json_node
+            child_json = json_node[name] if exists else None  # type: ignore[index]
+            children = build(subtree[name], child_json)
+            # Keep a node only if it (or something under it) needs making.
+            if not exists or children:
+                nodes.append(
+                    {"name": name, "exists": exists, "children": children}
+                )
+        return nodes
+
+    return build(merged, tree)

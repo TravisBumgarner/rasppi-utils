@@ -11,6 +11,7 @@ import type {
   Captions,
   IngestItem,
   Post,
+  TagPools,
 } from '../api/types';
 
 const INGEST_KEY = ['ingest'] as const;
@@ -39,8 +40,13 @@ export function useUploadIngestImages() {
 
 export function useUpdateIngestItem() {
   const queryClient = useQueryClient();
-  return useMutation<IngestItem, Error, { id: number; captions: Captions }>({
-    mutationFn: ({ id, captions }) => updateIngestItem(id, captions),
+  return useMutation<
+    IngestItem,
+    Error,
+    { id: number; captions: Captions; tagPools?: TagPools }
+  >({
+    mutationFn: ({ id, captions, tagPools }) =>
+      updateIngestItem(id, captions, tagPools),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: INGEST_KEY });
     },

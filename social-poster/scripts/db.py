@@ -186,6 +186,16 @@ def init_db() -> None:
                 "ALTER TABLE posts ADD COLUMN featured_by TEXT NOT NULL DEFAULT ''"
             )
 
+        # Structured tag pools for the bulk-review pill editor: a JSON object of
+        # per-platform {"prefix": <caption minus tag line>, "tags": [{text,
+        # priority, mention}, ...]}. Drives the draggable tag UI; the caption
+        # text the item posts still lives in `captions`.
+        if "tag_pools" not in _table_columns(conn, "ingest_items"):
+            conn.execute(
+                "ALTER TABLE ingest_items ADD COLUMN tag_pools TEXT NOT NULL "
+                "DEFAULT '{}'"
+            )
+
         conn.commit()
     finally:
         conn.close()

@@ -10,13 +10,22 @@ import {
 import { usePosts } from '../hooks/usePosts';
 import { useSettings, useUpdateSettings } from '../hooks/useSettings';
 import { WeeklyScheduleModal } from './WeeklyScheduleModal';
-import { formatDateTime, formatHHMM, toApiISO } from '../utils/datetime';
+import { TagPillEditor } from './TagPillEditor';
+import {
+  dateToDatetimeLocal,
+  formatDateTime,
+  formatHHMM,
+  toApiISO,
+} from '../utils/datetime';
 import { DAY_SHORT, generateSlots, timesByDay } from '../utils/schedule';
+import { captionFromPool, withSelection } from '../utils/tags';
 import type {
   BulkSchedule,
   Captions,
   IngestItem,
   Platform,
+  TagPool,
+  TagPools,
 } from '../api/types';
 
 const PLATFORM_LABEL: Record<Platform, string> = {
@@ -88,6 +97,15 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
   };
 
   const [showSchedule, setShowSchedule] = useState(false);
+  const [showIgPreview, setShowIgPreview] = useState(false);
+
+  // Where slot-filling starts. 'now' = next free slot from now; 'afterLast' =
+  // append strictly after the current queue's last post; 'custom' = a picked
+  // datetime. Occupied slots are always skipped regardless of mode.
+  const [startMode, setStartMode] = useState<'now' | 'afterLast' | 'custom'>(
+    'now'
+  );
+  const [customStart, setCustomStart] = useState('');
 
   // Target accounts — the last-used selection (localStorage), else all.
   const [accountIds, setAccountIds] = useState<number[] | null>(null);
@@ -122,27 +140,65 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
     return ALL_PLATFORMS.filter((p) => set.has(p));
   }, [selectedIds, accounts]);
 
-  // Caption edits keyed by `${itemId}:${platform}`; the server value is the
-  // fallback, so freshly-tagged captions appear until the user types.
+  // Free-text caption edits keyed by `${itemId}:${platform}` — the fallback for
+  // items/platforms that have no structured tag pool (e.g. tagging failed).
   const [edits, setEdits] = useState<Record<string, string>>({});
-  const captionValue = (item: IngestItem, platform: Platform) =>
-    edits[`${item.id}:${platform}`] ?? item.captions[platform] ?? '';
+  // Per-item tag pools the user has reordered / whose prefix they've edited;
+  // falls back to the server's pools until then.
+  const [poolEdits, setPoolEdits] = useState<Record<number, TagPools>>({});
 
-  const captionsFor = (item: IngestItem): Captions => {
+  const poolsForItem = (item: IngestItem): TagPools =>
+    poolEdits[item.id] ?? item.tag_pools ?? {};
+  const poolFor = (item: IngestItem, platform: Platform) => {
+    const pool = poolsForItem(item)[platform];
+    return pool ? withSelection(platform, pool) : undefined;
+  };
+
+  // A platform's caption comes from its pool (prefix + active tags) when one
+  // exists, else the free-text edit / server caption.
+  const captionValue = (item: IngestItem, platform: Platform) => {
+    const pool = poolFor(item, platform);
+    if (pool) {
+      return captionFromPool(platform, pool);
+    }
+    return edits[`${item.id}:${platform}`] ?? item.captions[platform] ?? '';
+  };
+
+  const captionsFrom = (item: IngestItem, pools: TagPools): Captions => {
     const captions: Captions = {};
     for (const platform of selectedPlatforms) {
-      captions[platform] = captionValue(item, platform);
+      const pool = pools[platform];
+      captions[platform] = pool
+        ? captionFromPool(platform, withSelection(platform, pool))
+        : edits[`${item.id}:${platform}`] ?? item.captions[platform] ?? '';
     }
     return captions;
   };
 
-  // Persist an edited caption when the user leaves the field, so a closed
-  // modal doesn't lose review work (items live server-side).
-  const persistCaption = (item: IngestItem) => {
+  const captionsFor = (item: IngestItem): Captions =>
+    captionsFrom(item, poolsForItem(item));
+
+  // Persist the current captions (+ pools) so a closed modal keeps review work.
+  const commit = (item: IngestItem, pools: TagPools) => {
     updateItem.mutate({
       id: item.id,
-      captions: { ...item.captions, ...captionsFor(item) },
+      captions: { ...item.captions, ...captionsFrom(item, pools) },
+      tagPools: { ...item.tag_pools, ...pools },
     });
+  };
+  const persistCaption = (item: IngestItem) => commit(item, poolsForItem(item));
+
+  // Prefix keystrokes update local state only (persist on blur); a pill reorder
+  // is a discrete action, so it updates state and persists immediately.
+  const setPoolLocal = (item: IngestItem, platform: Platform, next: TagPool) =>
+    setPoolEdits((prev) => ({
+      ...prev,
+      [item.id]: { ...poolsForItem(item), [platform]: next },
+    }));
+  const reorderPool = (item: IngestItem, platform: Platform, next: TagPool) => {
+    const pools = { ...poolsForItem(item), [platform]: next };
+    setPoolEdits((prev) => ({ ...prev, [item.id]: pools }));
+    commit(item, pools);
   };
 
   const fileInput = useRef<HTMLInputElement>(null);
@@ -187,10 +243,36 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
     () => new Set((posts ?? []).map((p) => p.scheduled_at)),
     [posts]
   );
-  const slots = useMemo(
-    () => generateSlots(effectiveSchedule, items.length, occupied),
-    [effectiveSchedule, items.length, occupied]
-  );
+  // The furthest-out scheduled post — where the current queue ends, so it's
+  // clear when this batch will start landing. ISO strings sort lexically.
+  const lastScheduledAt = useMemo(() => {
+    const times = (posts ?? []).map((p) => p.scheduled_at).sort();
+    return times.length > 0 ? times[times.length - 1] : null;
+  }, [posts]);
+  // Resolve the start-date toggle into the Date slot-filling begins after.
+  // Computed inside the slots memo so `now` is only sampled when deps change.
+  // Always clamped to now so a last-post/custom time in the past never
+  // schedules into the past.
+  const slots = useMemo(() => {
+    const now = new Date();
+    let from = now;
+    if (startMode === 'afterLast' && lastScheduledAt) {
+      from = new Date(lastScheduledAt);
+    } else if (startMode === 'custom' && customStart) {
+      from = new Date(customStart);
+    }
+    if (from.getTime() < now.getTime()) {
+      from = now;
+    }
+    return generateSlots(effectiveSchedule, items.length, occupied, from);
+  }, [
+    effectiveSchedule,
+    items.length,
+    occupied,
+    startMode,
+    customStart,
+    lastScheduledAt,
+  ]);
 
   const anyPending = items.some((i) => i.tag_status === 'pending');
   const scheduleEmpty = effectiveSchedule.slots.length === 0;
@@ -244,6 +326,65 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
         <div className="bulk-body">
           {/* LEFT: schedule template + accounts + upload */}
           <div className="bulk-config">
+            <div className="field">
+              <span className="field-label">Last scheduled post</span>
+              {lastScheduledAt ? (
+                <span>{formatDateTime(new Date(lastScheduledAt))}</span>
+              ) : (
+                <span className="muted">No posts scheduled yet</span>
+              )}
+            </div>
+
+            <div className="field">
+              <span className="field-label">Start filling from</span>
+              <div className="seg">
+                <button
+                  type="button"
+                  className={`seg-btn ${startMode === 'now' ? 'seg-btn--active' : ''}`}
+                  onClick={() => setStartMode('now')}
+                >
+                  Now
+                </button>
+                <button
+                  type="button"
+                  className={`seg-btn ${startMode === 'afterLast' ? 'seg-btn--active' : ''}`}
+                  onClick={() => setStartMode('afterLast')}
+                  disabled={!lastScheduledAt}
+                  title={
+                    lastScheduledAt
+                      ? undefined
+                      : 'No scheduled posts to start after'
+                  }
+                >
+                  After last post
+                </button>
+                <button
+                  type="button"
+                  className={`seg-btn ${startMode === 'custom' ? 'seg-btn--active' : ''}`}
+                  onClick={() => {
+                    if (!customStart) {
+                      setCustomStart(dateToDatetimeLocal(new Date()));
+                    }
+                    setStartMode('custom');
+                  }}
+                >
+                  Custom
+                </button>
+              </div>
+              {startMode === 'custom' && (
+                <input
+                  type="datetime-local"
+                  value={customStart}
+                  min={dateToDatetimeLocal(new Date())}
+                  onChange={(e) => setCustomStart(e.target.value)}
+                />
+              )}
+              <span className="muted field-help">
+                Occupied slots are always skipped, so nothing double-books.
+                Start is clamped to now — nothing schedules in the past.
+              </span>
+            </div>
+
             <div className="field">
               <div className="field-label-row">
                 <span className="field-label">Weekly schedule</span>
@@ -308,6 +449,10 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
           <div
             className={`bulk-review ${dragOver ? 'bulk-review--dragover' : ''}`}
             onDragOver={(e) => {
+              // Only react to file drags — not pill reordering inside a photo.
+              if (!e.dataTransfer.types.includes('Files')) {
+                return;
+              }
               e.preventDefault();
               setDragOver(true);
             }}
@@ -317,6 +462,9 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
               }
             }}
             onDrop={(e) => {
+              if (!e.dataTransfer.types.includes('Files')) {
+                return;
+              }
               e.preventDefault();
               setDragOver(false);
               onFilesChosen(e.dataTransfer.files);
@@ -348,15 +496,26 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
                   : 'Drop photos here, or click to browse'}
               </div>
             )}
-            {items.length > 1 && (
+            {items.length > 0 && (
               <div className="bulk-review-toolbar">
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={shuffleOrder}
-                >
-                  🔀 Shuffle order
-                </button>
+                {items.length > 1 && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={shuffleOrder}
+                  >
+                    🔀 Shuffle order
+                  </button>
+                )}
+                {selectedPlatforms.includes('instagram') && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => setShowIgPreview(true)}
+                  >
+                    📷 Instagram preview
+                  </button>
+                )}
               </div>
             )}
             {orderedItems.map((item, index) => (
@@ -388,24 +547,54 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
                     </span>
                   )}
                   {item.tag_status !== 'pending' &&
-                    selectedPlatforms.map((platform) => (
-                      <label key={platform} className="field">
-                        <span className="field-label">
-                          {PLATFORM_LABEL[platform]} caption
-                        </span>
-                        <textarea
-                          rows={6}
-                          value={captionValue(item, platform)}
-                          onChange={(e) =>
-                            setEdits((prev) => ({
-                              ...prev,
-                              [`${item.id}:${platform}`]: e.target.value,
-                            }))
-                          }
-                          onBlur={() => persistCaption(item)}
-                        />
-                      </label>
-                    ))}
+                    selectedPlatforms.map((platform) => {
+                      const pool = poolFor(item, platform);
+                      return (
+                        <div key={platform} className="field">
+                          <span className="field-label">
+                            {PLATFORM_LABEL[platform]} caption
+                          </span>
+                          {pool ? (
+                            <>
+                              <textarea
+                                className="bulk-prefix"
+                                rows={3}
+                                value={pool.prefix}
+                                onChange={(e) =>
+                                  setPoolLocal(item, platform, {
+                                    ...pool,
+                                    prefix: e.target.value,
+                                  })
+                                }
+                                onBlur={() => persistCaption(item)}
+                              />
+                              <TagPillEditor
+                                platform={platform}
+                                pool={pool}
+                                onReorder={(tags) =>
+                                  reorderPool(item, platform, {
+                                    ...pool,
+                                    tags,
+                                  })
+                                }
+                              />
+                            </>
+                          ) : (
+                            <textarea
+                              rows={6}
+                              value={captionValue(item, platform)}
+                              onChange={(e) =>
+                                setEdits((prev) => ({
+                                  ...prev,
+                                  [`${item.id}:${platform}`]: e.target.value,
+                                }))
+                              }
+                              onBlur={() => persistCaption(item)}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
             ))}
@@ -465,6 +654,45 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
         onChange={saveSchedule}
         onClose={() => setShowSchedule(false)}
       />
+    )}
+
+    {showIgPreview && (
+      <div
+        className="modal-backdrop"
+        onClick={() => setShowIgPreview(false)}
+        role="presentation"
+      >
+        <div
+          className="modal modal--ig-preview"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Instagram grid preview"
+        >
+          <div className="modal-header">
+            <h2>Instagram preview</h2>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setShowIgPreview(false)}
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </div>
+          <p className="muted field-help ig-preview-hint">
+            How the batch lands on your profile grid — most recent (last
+            scheduled) first.
+          </p>
+          <div className="ig-grid">
+            {[...orderedItems].reverse().map((item) => (
+              <div key={item.id} className="ig-grid-cell">
+                <img src={item.image_url} alt="" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     )}
     </>
   );

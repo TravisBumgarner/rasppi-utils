@@ -2,11 +2,8 @@
   "Camera": {
     "DJIMini3Pro": {
       "general": [
-        "#dji",
-        "#djiphotography",
-        "#djidrone",
-        "#djicreator",
-        "#djimini3pro"
+        "#djimini3pro",
+        "#djidrone"
       ],
       "priority": [],
       "bluesky": [
@@ -17,9 +14,7 @@
     },
     "iPhone13": {
       "general": [
-        "#iphonephotography",
         "#shotoniphone",
-        "#mobilephotography",
         "#iphone13"
       ],
       "priority": [],
@@ -30,9 +25,7 @@
     },
     "iPhone15": {
       "general": [
-        "#iphonephotography",
         "#shotoniphone",
-        "#mobilephotography",
         "#iphone15"
       ],
       "priority": [],
@@ -42,12 +35,7 @@
       ]
     },
     "NikonD5300": {
-      "general": [
-        "#nikond5300",
-        "#nikon",
-        "#nikonphotography",
-        "#nikonphotographer"
-      ],
+      "general": [],
       "priority": [
         "#NikonNoFilter",
         "@nikonusa"
@@ -57,12 +45,7 @@
       ]
     },
     "NikonD7500": {
-      "general": [
-        "#nikond7500",
-        "#nikon",
-        "#nikonphotography",
-        "#nikonphotographer"
-      ],
+      "general": [],
       "priority": [
         "#NikonNoFilter",
         "@nikonusa"
@@ -72,17 +55,7 @@
       ]
     },
     "NikonSLR": {
-      "general": [
-        "#filmphotography",
-        "#filmisnotdead",
-        "#analogphotography",
-        "#35mm",
-        "#thedaily35mm",
-        "#35mmfilm",
-        "#nikon",
-        "#nikonphotography",
-        "#nikonphotographer"
-      ],
+      "general": [],
       "priority": [
         "#analogsunrise",
         "@analogsunrise",
@@ -98,12 +71,7 @@
       ]
     },
     "NikonZ5": {
-      "general": [
-        "#nikonz5",
-        "#nikon",
-        "#nikonphotography",
-        "#nikonphotographer"
-      ],
+      "general": [],
       "priority": [
         "#NikonNoFilter",
         "#Zcreators",
@@ -114,16 +82,7 @@
       ]
     },
     "OlympusPS": {
-      "general": [
-        "#filmphotography",
-        "#filmisnotdead",
-        "#analogphotography",
-        "#35mm",
-        "#thedaily35mm",
-        "#35mmfilm",
-        "#olympusphotography",
-        "#olympuscamera"
-      ],
+      "general": [],
       "priority": [
         "#analogsunrise",
         "@analogsunrise",
@@ -133,27 +92,14 @@
         "@redditanalog"
       ],
       "bluesky": [
-        "#PointandShoot",
         "#filmphotography",
-        "#film",
         "#believeinfilm",
-        "#filmisnotdead",
-        "#infilmwetrust",
-        "#35mmFilm"
+        "#35mmfilm",
+        "#pointandshoot"
       ]
     },
     "PentaxK1000": {
-      "general": [
-        "#filmphotography",
-        "#filmisnotdead",
-        "#analogphotography",
-        "#35mm",
-        "#thedaily35mm",
-        "#35mmfilm",
-        "#pentax",
-        "#k1000",
-        "#pentaxk1000"
-      ],
+      "general": [],
       "priority": [
         "#analogsunrise",
         "@analogsunrise",
@@ -163,23 +109,16 @@
         "@redditanalog"
       ],
       "bluesky": [
-        "#pentaxK1000",
-        "#pentaxphotography",
         "#filmphotography",
-        "#film",
         "#believeinfilm",
-        "#filmisnotdead",
-        "#infilmwetrust",
-        "#35mmFilm"
+        "#35mmfilm",
+        "#pentaxk1000"
       ]
     },
     "Pixel3": {
       "general": [
         "#shotonpixel",
-        "#pixel3",
-        "#googlepixel3",
-        "#googlepixel",
-        "#pixelartist"
+        "#pixel3"
       ],
       "priority": [],
       "bluesky": [
@@ -188,15 +127,7 @@
       ]
     },
     "YashicaC": {
-      "general": [
-        "#filmphotography",
-        "#filmisnotdead",
-        "#analogphotography",
-        "#120",
-        "#120film",
-        "#yashicac",
-        "#yashica"
-      ],
+      "general": [],
       "priority": [
         "#analogsunrise",
         "@analogsunrise",
@@ -206,24 +137,14 @@
         "@redditanalog"
       ],
       "bluesky": [
-        "#yashica",
         "#filmphotography",
-        "#film",
         "#believeinfilm",
-        "#filmisnotdead",
-        "#infilmwetrust",
+        "#mediumformat",
         "#120film"
       ]
     },
     "UnknownFilmCamera": {
-      "general": [
-        "#filmphotography",
-        "#filmisnotdead",
-        "#analogphotography",
-        "#35mm",
-        "#thedaily35mm",
-        "#35mmfilm"
-      ],
+      "general": [],
       "priority": [
         "#analogsunrise",
         "@analogsunrise",
@@ -234,20 +155,14 @@
       ],
       "bluesky": [
         "#filmphotography",
-        "#film",
         "#believeinfilm",
-        "#filmisnotdead",
-        "#infilmwetrust",
-        "#35mmFilm"
+        "#35mmfilm"
       ]
     }
   },
   "FilmType": {
     "Across100": {
-      "general": [
-        "#fujifilm",
-        "#across100"
-      ],
+      "general": [],
       "priority": [
         "#ishootfujifilm",
         "@fujifilm_profilm"
@@ -258,11 +173,7 @@
       ]
     },
     "FujifilmXtra400": {
-      "general": [
-        "#fujifilm",
-        "#fujifilmxtra400",
-        "#fujifilmxtra"
-      ],
+      "general": [],
       "priority": [
         "#ishootfujifilm",
         "@fujifilm_profilm"
@@ -272,10 +183,7 @@
       ]
     },
     "KodakTMax400": {
-      "general": [
-        "#tmax400",
-        "#kodaktmax400"
-      ],
+      "general": [],
       "priority": [
         "#MadeWithKodak",
         "@kodakprofessional"
@@ -286,12 +194,7 @@
       ]
     },
     "Gold200": {
-      "general": [
-        "#gold200",
-        "#gold200film",
-        "#kodakfilm",
-        "#kodakgold200"
-      ],
+      "general": [],
       "priority": [
         "#MadeWithKodak",
         "@kodakprofessional"
@@ -301,10 +204,20 @@
         "#madewithkodak"
       ]
     },
-    "Lomography100": {
-      "general": [
-        "#lomography100"
+    "KodakColorPlus200": {
+      "general": [],
+      "priority": [
+        "#MadeWithKodak",
+        "@kodakprofessional"
       ],
+      "bluesky": [
+        "#kodak",
+        "#colorplus200",
+        "#madewithkodak"
+      ]
+    },
+    "Lomography100": {
+      "general": [],
       "priority": [
         "@lomography",
         "#HeyLomography"
@@ -314,9 +227,7 @@
       ]
     },
     "LomographyMetro": {
-      "general": [
-        "#lomographymetropolis"
-      ],
+      "general": [],
       "priority": [
         "@lomography",
         "#HeyLomography"
@@ -326,9 +237,7 @@
       ]
     },
     "LomographyPurple": {
-      "general": [
-        "#lomographypurple"
-      ],
+      "general": [],
       "priority": [
         "@lomography",
         "#HeyLomography"
@@ -338,9 +247,7 @@
       ]
     },
     "Portra160": {
-      "general": [
-        "#portra160"
-      ],
+      "general": [],
       "priority": [
         "#MadeWithKodak",
         "@kodakprofessional"
@@ -352,9 +259,7 @@
       ]
     },
     "Portra400": {
-      "general": [
-        "#portra400"
-      ],
+      "general": [],
       "priority": [
         "#MadeWithKodak",
         "@kodakprofessional"
@@ -366,9 +271,7 @@
       ]
     },
     "Portra800": {
-      "general": [
-        "#portra800"
-      ],
+      "general": [],
       "priority": [
         "#MadeWithKodak",
         "@kodakprofessional"
@@ -380,10 +283,7 @@
       ]
     },
     "Ektar100": {
-      "general": [
-        "#ektar100",
-        "#kodakektar100"
-      ],
+      "general": [],
       "priority": [
         "#MadeWithKodak",
         "@kodakprofessional"
@@ -394,9 +294,7 @@
       ]
     },
     "LomographyTurquoise": {
-      "general": [
-        "#lomographyturquoise"
-      ],
+      "general": [],
       "priority": [
         "@lomography",
         "#HeyLomography"
@@ -406,10 +304,7 @@
       ]
     },
     "IlfordDelta3200": {
-      "general": [
-        "#ilford",
-        "#delta3200"
-      ],
+      "general": [],
       "priority": [
         "#ilfordphoto",
         "#fridayfavourites",
@@ -417,16 +312,11 @@
       ],
       "bluesky": [
         "#ilford",
-        "#delta3200",
-        "#ilfordphoto",
-        "#fridayfavourites"
+        "#delta3200"
       ]
     },
     "IlfordHP5": {
-      "general": [
-        "#ilford",
-        "#hp5"
-      ],
+      "general": [],
       "priority": [
         "#ilfordphoto",
         "#fridayfavourites",
@@ -434,16 +324,11 @@
       ],
       "bluesky": [
         "#ilford",
-        "#hp5",
-        "#ilfordphoto",
-        "#fridayfavourites"
+        "#hp5"
       ]
     },
     "KodakUltramax400": {
-      "general": [
-        "#kodak",
-        "#ultramax400"
-      ],
+      "general": [],
       "priority": [
         "#MadeWithKodak",
         "@kodakprofessional"
@@ -454,10 +339,7 @@
       ]
     },
     "FujiPro160": {
-      "general": [
-        "#fujifilm",
-        "#pro160"
-      ],
+      "general": [],
       "priority": [
         "#ishootfujifilm",
         "@fujifilm_profilm"
@@ -468,25 +350,18 @@
       ]
     },
     "Kentmere400": {
-      "general": [
-        "#kentmere400"
-      ],
+      "general": [],
       "priority": [
         "#ilfordphoto",
         "#fridayfavourites",
         "@ilfordphoto"
       ],
       "bluesky": [
-        "#kentmere400",
-        "#ilfordphoto",
-        "#fridayfavourites"
+        "#kentmere400"
       ]
     },
     "Kodak400TX": {
-      "general": [
-        "#kodak",
-        "#400tx"
-      ],
+      "general": [],
       "priority": [
         "#MadeWithKodak",
         "@kodakprofessional"
@@ -509,12 +384,7 @@
         "bluesky": []
       },
       "Country": {
-        "general": [
-          "#mexico",
-          "#mexicomagico",
-          "#mexicotravel",
-          "#mexicolindo"
-        ],
+        "general": [],
         "priority": [
           "#mexico_fotografos",
           "@mexico_fotografos",
@@ -547,12 +417,7 @@
       "bluesky": [],
       "Alaska": {
         "State": {
-          "general": [
-            "#alaska",
-            "#alaskalife",
-            "#alaskaphotography",
-            "#travelalaska"
-          ],
+          "general": [],
           "priority": [
             "#TravelAlaska",
             "@travelalaska"
@@ -602,11 +467,7 @@
       },
       "Idaho": {
         "State": {
-          "general": [
-            "#idaho",
-            "#idahoexplored",
-            "#visitidaho"
-          ],
+          "general": [],
           "priority": [
             "#VisitIdaho",
             "@visitidaho"
@@ -631,13 +492,7 @@
       },
       "Montana": {
         "State": {
-          "general": [
-            "#montana",
-            "#montanacolors",
-            "#montanalife",
-            "#montanaliving",
-            "#montanaphotographer"
-          ],
+          "general": [],
           "priority": [
             "#MontanaMoment",
             "@visitmontana"
@@ -649,12 +504,7 @@
       },
       "Oregon": {
         "State": {
-          "general": [
-            "#oregon",
-            "#oregonexplored",
-            "#pnw",
-            "#pacificnorthwest"
-          ],
+          "general": [],
           "priority": [
             "#traveloregon",
             "@traveloregon"
@@ -667,13 +517,7 @@
       },
       "Utah": {
         "State": {
-          "general": [
-            "#utah",
-            "#utahphotographer",
-            "#utahphotography",
-            "#utahisbeautiful",
-            "#utahtravels"
-          ],
+          "general": [],
           "priority": [
             "#VisitUtah",
             "@visitutah",
@@ -703,12 +547,7 @@
       },
       "Washington": {
         "State": {
-          "general": [
-            "#washington",
-            "#washingtonstate",
-            "#pnw",
-            "#pacificnorthwest"
-          ],
+          "general": [],
           "priority": [
             "#TrueToNature",
             "@stateofwatourism"
@@ -721,11 +560,7 @@
       },
       "Wyoming": {
         "State": {
-          "general": [
-            "#wyoming",
-            "#wyomingphotography",
-            "#wyominglife"
-          ],
+          "general": [],
           "priority": [
             "#ThatsWY",
             "@visitwyoming"
@@ -739,12 +574,7 @@
     "Canada": {
       "Yukon": {
         "Province": {
-          "general": [
-            "#yukon",
-            "#exploreyukon",
-            "#yukonterritory",
-            "#thenorth"
-          ],
+          "general": [],
           "priority": [
             "#ExploreYukon",
             "@travelyukon"
@@ -756,11 +586,7 @@
       },
       "BritishColumbia": {
         "Province": {
-          "general": [
-            "#britishcolumbia",
-            "#beautifulbc",
-            "#explorebc"
-          ],
+          "general": [],
           "priority": [
             "#exploreBC",
             "@hellobc"
@@ -772,11 +598,7 @@
       },
       "Alberta": {
         "Province": {
-          "general": [
-            "#alberta",
-            "#explorealberta",
-            "#albertacanada"
-          ],
+          "general": [],
           "priority": [
             "#ExploreAlberta",
             "@travelalberta"
@@ -789,9 +611,7 @@
     },
     "NationalPark": {
       "Arches": {
-        "general": [
-          "#archesnationalpark"
-        ],
+        "general": [],
         "priority": [
           "#archesnps",
           "@archesnps",
@@ -803,12 +623,7 @@
         ]
       },
       "Banff": {
-        "general": [
-          "#banff",
-          "#banffnationalpark",
-          "#banffcanada",
-          "#banffalberta"
-        ],
+        "general": [],
         "priority": [
           "#ParksCanada",
           "@parks.canada",
@@ -820,10 +635,7 @@
         ]
       },
       "Denali": {
-        "general": [
-          "#denali",
-          "#denalinationalpark"
-        ],
+        "general": [],
         "priority": [
           "#denalinps",
           "@denalinps",
@@ -837,9 +649,7 @@
         ]
       },
       "Glacier": {
-        "general": [
-          "#glaciernationalpark"
-        ],
+        "general": [],
         "priority": [
           "#glaciernps",
           "@glaciernps",
@@ -851,10 +661,7 @@
         ]
       },
       "GlacierCanada": {
-        "general": [
-          "#glaciernationalparkcanada",
-          "#rogerspass"
-        ],
+        "general": [],
         "priority": [
           "#ParksCanada",
           "@parks.canada"
@@ -865,11 +672,7 @@
         ]
       },
       "GrandTeton": {
-        "general": [
-          "#grandteton",
-          "#grandtetonnationalpark",
-          "#tetons"
-        ],
+        "general": [],
         "priority": [
           "#grandtetonnps",
           "@grandtetonnps",
@@ -881,11 +684,7 @@
         ]
       },
       "Jasper": {
-        "general": [
-          "#jasper",
-          "#jaspernationalpark",
-          "#jasperalberta"
-        ],
+        "general": [],
         "priority": [
           "#ParksCanada",
           "@parks.canada"
@@ -896,10 +695,7 @@
         ]
       },
       "Katmai": {
-        "general": [
-          "#katmai",
-          "#katmainationalpark"
-        ],
+        "general": [],
         "priority": [
           "@katmainpp",
           "@alaskanps",
@@ -911,10 +707,7 @@
         ]
       },
       "KenaiFjords": {
-        "general": [
-          "#kenaifjords",
-          "#kenaifjordsnationalpark"
-        ],
+        "general": [],
         "priority": [
           "#kenaifjordsnps",
           "@kenaifjordsnps",
@@ -927,11 +720,7 @@
         ]
       },
       "Kootenay": {
-        "general": [
-          "#kootenay",
-          "#kootenaynationalpark",
-          "#kootenays"
-        ],
+        "general": [],
         "priority": [
           "#ParksCanada",
           "@parks.canada"
@@ -942,10 +731,7 @@
         ]
       },
       "Olympic": {
-        "general": [
-          "#olympicnationalpark",
-          "#olympicpeninsula"
-        ],
+        "general": [],
         "priority": [
           "@olympic_nps",
           "#nationalparkgeek"
@@ -956,10 +742,7 @@
         ]
       },
       "WrangellStElias": {
-        "general": [
-          "#wrangellstelias",
-          "#wrangellsteliasnationalpark"
-        ],
+        "general": [],
         "priority": [
           "@alaskanps",
           "#nationalparkgeek"
@@ -970,10 +753,7 @@
         ]
       },
       "Yellowstone": {
-        "general": [
-          "#yellowstone",
-          "#yellowstonenationalpark"
-        ],
+        "general": [],
         "priority": [
           "#yellowstonenps",
           "@yellowstonenps",
@@ -985,11 +765,7 @@
         ]
       },
       "Yoho": {
-        "general": [
-          "#yoho",
-          "#yohonationalpark",
-          "#emeraldlake"
-        ],
+        "general": [],
         "priority": [
           "#ParksCanada",
           "@parks.canada"
@@ -1018,34 +794,31 @@
   "PhotoType": {
     "Animals": {
       "general": [
-        "#animalkingdom",
         "#naturewanderers",
-        "#animallovers",
         "#everything_animals"
       ],
       "priority": [],
       "bluesky": [
+        "#wildlife",
+        "#wildlifephotography",
         "#animals",
-        "#wildlife"
+        "#naturephotography"
       ]
     },
     "Architecture": {
       "general": [
-        "#architecture",
-        "#architecturelovers",
         "#architecturephotography",
         "#arquitectura"
       ],
       "priority": [],
       "bluesky": [
+        "#architecturephotography",
         "#architecture"
       ]
     },
     "Beach": {
       "general": [
-        "#beautifulbeaches",
-        "#beach",
-        "#beaches"
+        "#beautifulbeaches"
       ],
       "priority": [],
       "bluesky": [
@@ -1054,25 +827,18 @@
     },
     "BlackAndWhite": {
       "general": [
-        "#bnw",
         "#bnwphotography",
-        "#bnwmood",
-        "#bnw_captures",
-        "#bnwphoto"
+        "#bnw_captures"
       ],
       "priority": [],
       "bluesky": [
         "#blackandwhite",
-        "#monochrome",
         "#bnw",
-        "#bnw_captures"
+        "#monochrome"
       ]
     },
     "Cars": {
       "general": [
-        "#cars",
-        "#carsdaily",
-        "#carlovers",
         "#carswithoutlimits",
         "#carstagram"
       ],
@@ -1081,11 +847,8 @@
     },
     "Clouds": {
       "general": [
-        "#clouds",
         "#cloudscape",
-        "#cloudchaser",
-        "#cloudphotography",
-        "#cloudlovers"
+        "#cloudphotography"
       ],
       "priority": [],
       "bluesky": [
@@ -1095,10 +858,7 @@
     },
     "Flowers": {
       "general": [
-        "#flowers",
-        "#flowerslovers",
-        "#flowersphotography",
-        "#flowersmakemehappy"
+        "#flowersphotography"
       ],
       "priority": [],
       "bluesky": [
@@ -1109,8 +869,7 @@
     "Landscape": {
       "general": [
         "#landscapephotography",
-        "#landscape_collection",
-        "#landscapelover"
+        "#landscape_collection"
       ],
       "priority": [],
       "bluesky": [
@@ -1130,8 +889,7 @@
     },
     "Portrait": {
       "general": [
-        "#portraitphotography",
-        "#portrait"
+        "#portraitphotography"
       ],
       "priority": [],
       "bluesky": [
@@ -1141,7 +899,6 @@
     },
     "Selfie": {
       "general": [
-        "#selfie",
         "#photographicselfportrait",
         "#artisticselfie"
       ],
@@ -1149,13 +906,7 @@
       "bluesky": []
     },
     "Stars": {
-      "general": [
-        "#astrophotography",
-        "#moonlovers",
-        "#astronomy",
-        "#nightshooters",
-        "#nightimages"
-      ],
+      "general": [],
       "priority": [
         "@milkyway_nightscape",
         "#milkyway_nightscape_"
@@ -1166,10 +917,7 @@
       ]
     },
     "Shadows": {
-      "general": [
-        "#shadows",
-        "#shadowart"
-      ],
+      "general": [],
       "priority": [
         "#shadows_magazine"
       ],
@@ -1179,11 +927,8 @@
     },
     "Storms": {
       "general": [
-        "#lightening",
         "#stormphotography",
-        "#stormchasers",
-        "#stormclouds",
-        "#thunderstorms"
+        "#stormchasers"
       ],
       "priority": [],
       "bluesky": [
@@ -1192,29 +937,19 @@
       ]
     },
     "Street": {
-      "general": [
-        "#street_perfection",
-        "#streetphotography",
-        "#street",
-        "#streetphotographers",
-        "#streetclassics",
-        "#streetphotographer",
-        "#fotografiacallejera"
-      ],
+      "general": [],
       "priority": [
         "#streetdreamsmag",
         "#SDMfeatures"
       ],
       "bluesky": [
-        "#streetart",
-        "#streetphotography"
+        "#streetphotography",
+        "#streetart"
       ]
     },
     "Sunsets": {
       "general": [
-        "#sunset",
-        "#sunsetlovers",
-        "#sunsets"
+        "#sunsetlovers"
       ],
       "priority": [],
       "bluesky": [
@@ -1226,16 +961,10 @@
   "SocialEvent": {
     "DayOfTheDead": {
       "general": [
-        "#dayofthedead",
         "#DiaDeMuertos",
-        "#DiaDeLosMuertos",
-        "#ddlm",
-        "#marigolds",
         "#catrina",
         "#cempasuchil",
-        "#desfilediademuertoscdmx",
-        "#2denoviembre",
-        "#tradicionesmexicanas"
+        "#marigolds"
       ],
       "priority": [],
       "bluesky": [
@@ -1245,11 +974,9 @@
     },
     "MexicoCityFireworksFestival": {
       "general": [
-        "#torostultepec",
-        "#pirotecniatultepec",
         "#tultepec",
-        "#tultepeccapitaldelapirotécnia",
-        "#fireworks"
+        "#pirotecniatultepec",
+        "#torostultepec"
       ],
       "priority": [],
       "bluesky": [
@@ -1257,13 +984,7 @@
       ]
     },
     "PrideCelebration": {
-      "general": [
-        "#pride",
-        "#pridemonth",
-        "#equality",
-        "#orgullocdmx",
-        "#marchalgbtcdmx"
-      ],
+      "general": [],
       "priority": [
         "@marchalgbtcdmx"
       ],
@@ -1283,15 +1004,7 @@
       ]
     },
     "WorldCup2026": {
-      "general": [
-        "#FIFAWorldCup",
-        "#Mundial2026",
-        "#EstadioAzteca",
-        "#WeAre26",
-        "#Somos26",
-        "#worldcup",
-        "#futbol"
-      ],
+      "general": [],
       "priority": [
         "@mexicocity26_",
         "@fifaworldcup",

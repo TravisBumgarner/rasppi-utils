@@ -1012,10 +1012,15 @@ def serialize_ingest_item(row) -> Dict:
         captions = json.loads(row["captions"])
     except (json.JSONDecodeError, TypeError):
         captions = {}
+    try:
+        tag_pools = json.loads(row["tag_pools"])
+    except (json.JSONDecodeError, TypeError, IndexError):
+        tag_pools = {}
     return {
         "id": row["id"],
         "image_url": "/api/images/" + row["image_filename"],
         "captions": captions,
+        "tag_pools": tag_pools,
         "tag_status": row["tag_status"],
         "tag_error": row["tag_error"],
         "created_at": row["created_at"],
@@ -1040,13 +1045,18 @@ def _run_tagging(item_ids: List[int]) -> None:
             if row is None or row["tag_status"] != "pending":
                 continue  # discarded or already edited by the user
             try:
-                captions = tagging.extract_captions(
-                    str(db.IMAGES_DIR / row["image_filename"])
-                )
+                path = str(db.IMAGES_DIR / row["image_filename"])
+                captions = tagging.extract_captions(path)
+                # Pools drive the pill editor; if they can't be built the caption
+                # still stands (same preconditions, so this only trips defensively).
+                try:
+                    tag_pools = tagging.extract_tag_pools(path)
+                except Exception:  # noqa: BLE001
+                    tag_pools = {}
                 conn.execute(
-                    "UPDATE ingest_items SET captions = ?, tag_status = 'tagged' "
-                    "WHERE id = ? AND tag_status = 'pending'",
-                    (json.dumps(captions), item_id),
+                    "UPDATE ingest_items SET captions = ?, tag_pools = ?, "
+                    "tag_status = 'tagged' WHERE id = ? AND tag_status = 'pending'",
+                    (json.dumps(captions), json.dumps(tag_pools), item_id),
                 )
             except Exception as exc:  # noqa: BLE001 - one bad image must not kill the batch.
                 conn.execute(
@@ -1127,14 +1137,18 @@ def create_ingest_items():
 def update_ingest_item(item_id: int):
     """Update a staged item's captions (the user editing during review).
 
-    Body: ``{"captions": {"instagram": "...", "bluesky": "..."}}``. Also
-    promotes a still-'pending' item to 'tagged' so the tagging thread won't
-    overwrite the user's text if it finishes later.
+    Body: ``{"captions": {"instagram": "...", "bluesky": "..."}}`` and
+    optionally ``{"tag_pools": {...}}`` to persist the draggable pill
+    order/selection. Also promotes a still-'pending' item to 'tagged' so the
+    tagging thread won't overwrite the user's edits if it finishes later.
     """
     body = request.get_json(silent=True) or {}
     captions = body.get("captions")
     if not isinstance(captions, dict):
         return jsonify({"error": "captions must be a JSON object"}), 400
+    tag_pools = body.get("tag_pools")
+    if tag_pools is not None and not isinstance(tag_pools, dict):
+        return jsonify({"error": "tag_pools must be a JSON object"}), 400
 
     conn = db.get_connection()
     try:
@@ -1143,11 +1157,22 @@ def update_ingest_item(item_id: int):
         ).fetchone()
         if row is None:
             return jsonify({"error": "ingest item not found"}), 404
-        conn.execute(
-            "UPDATE ingest_items SET captions = ?, tag_status = 'tagged', "
-            "tag_error = NULL WHERE id = ?",
-            (json.dumps({str(k): str(v) for k, v in captions.items()}), item_id),
-        )
+        if tag_pools is None:
+            conn.execute(
+                "UPDATE ingest_items SET captions = ?, tag_status = 'tagged', "
+                "tag_error = NULL WHERE id = ?",
+                (json.dumps({str(k): str(v) for k, v in captions.items()}), item_id),
+            )
+        else:
+            conn.execute(
+                "UPDATE ingest_items SET captions = ?, tag_pools = ?, "
+                "tag_status = 'tagged', tag_error = NULL WHERE id = ?",
+                (
+                    json.dumps({str(k): str(v) for k, v in captions.items()}),
+                    json.dumps(tag_pools),
+                    item_id,
+                ),
+            )
         conn.commit()
         row = conn.execute(
             "SELECT * FROM ingest_items WHERE id = ?", (item_id,)
@@ -1288,6 +1313,59 @@ def tagging_preview():
         except Exception as exc:  # noqa: BLE001 - missing metadata is expected.
             return jsonify({"captions": {}, "error": str(exc)}), 200
     return jsonify({"captions": captions, "error": None}), 200
+
+
+@app.route("/api/tagging/check", methods=["POST"])
+def tagging_check():
+    """Report which Lightroom keywords on a batch of photos aren't registered.
+
+    Field: images (one or more files). Every ``cameracoffeewander|...`` keyword
+    across the batch is merged into one hierarchy tree, annotated with whether
+    each node exists in ``config/tags.json`` and pruned to just the branches
+    that lead to a missing node — so the caller can render exactly the tags
+    that still need making, in context. Nothing is staged or saved; photos are
+    inspected in temp files and discarded.
+
+    Returns ``{"tree": [...], "missing": [...], "files": [{"filename",
+    "error"}]}``. ``tree`` nodes are ``{"name", "exists", "children"}``;
+    ``missing`` is the deduplicated ``A|B|C`` worklist. Photos missing usable
+    metadata carry an ``error``; that's a normal per-photo outcome, so the
+    request still succeeds (200).
+    """
+    images = [f for f in request.files.getlist("images") if f and f.filename]
+    if not images:
+        return jsonify({"error": "at least one image file is required"}), 400
+    bad = [
+        f.filename
+        for f in images
+        if Path(f.filename).suffix.lower() not in ALLOWED_IMAGE_EXTENSIONS
+    ]
+    if bad:
+        return jsonify({"error": f"unsupported image type(s): {bad}"}), 400
+
+    files: List[Dict] = []
+    all_paths: List[List[str]] = []
+    for image in images:
+        ext = Path(image.filename).suffix.lower()
+        with tempfile.NamedTemporaryFile(suffix=ext) as tmp:
+            image.save(tmp.name)
+            try:
+                all_paths.extend(tagging.keyword_paths(tmp.name))
+                error = None
+            except Exception as exc:  # noqa: BLE001 - missing metadata is expected.
+                error = str(exc)
+        files.append({"filename": image.filename, "error": error})
+
+    return (
+        jsonify(
+            {
+                "tree": tagging.tag_status_tree(all_paths),
+                "missing": tagging.missing_paths(all_paths),
+                "files": files,
+            }
+        ),
+        200,
+    )
 
 
 @app.route("/api/images/<path:filename>", methods=["GET"])

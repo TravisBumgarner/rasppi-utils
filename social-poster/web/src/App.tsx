@@ -4,6 +4,7 @@ import { CalendarView } from './components/CalendarView';
 import { ActivityView } from './components/ActivityView';
 import { PostModal } from './components/PostModal';
 import { BulkAddModal } from './components/BulkAddModal';
+import { TagCheckerModal } from './components/TagCheckerModal';
 import { AccountsPanel } from './components/AccountsPanel';
 import { SettingsPanel } from './components/SettingsPanel';
 import type { Post } from './api/types';
@@ -18,6 +19,7 @@ export default function App() {
   const [showAccounts, setShowAccounts] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showBulkAdd, setShowBulkAdd] = useState(false);
+  const [showTagChecker, setShowTagChecker] = useState(false);
 
   return (
     <div className="app">
@@ -52,6 +54,13 @@ export default function App() {
             title="Settings"
           >
             ⚙
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => setShowTagChecker(true)}
+          >
+            Tag checker
           </button>
           <button
             type="button"
@@ -103,6 +112,9 @@ export default function App() {
         />
       )}
       {showBulkAdd && <BulkAddModal onClose={() => setShowBulkAdd(false)} />}
+      {showTagChecker && (
+        <TagCheckerModal onClose={() => setShowTagChecker(false)} />
+      )}
       {showAccounts && (
         <AccountsPanel onClose={() => setShowAccounts(false)} />
       )}

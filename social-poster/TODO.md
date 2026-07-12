@@ -89,12 +89,13 @@ All nested under the `cameracoffeewander` root; nothing existing was renamed.
 ## Known gaps from the research (July 2026)
 
 - [x] **Hashtag volume is deprioritized on Instagram (2026):** DONE — captions
-      now include every priority item (hubs are never dropped; @mentions don't
-      count toward the budget) plus a random draw of general tags up to 5
-      hashtags total. Note: photos stacking many hubs (film camera + film stock
-      + park + NatGeo) can exceed 5 priority hashtags by design. Alt text is
-      now handled (derived from captions, sent to both platforms); still open:
-      invest in keyword-rich captions.
+      are hard-capped at 5 hashtags total: priority hashtags (feature hubs) fill
+      the budget first, then a random draw of general tags tops it up; @mentions
+      don't count and are always kept. (Updated July 2026: hubs used to be
+      exempt from the cap and could exceed 5 — now the 5-hashtag cap is hard,
+      so a photo stacking many hubs keeps only its first 5 priority hashtags.)
+      Alt text is now handled (derived from captions, sent to both platforms);
+      still open: invest in keyword-rich captions.
 - [x] **No Bluesky 300-char handling:** DONE — trailing tags are dropped until
       the caption fits 300 chars. Since lists are trimmed from the end, keep
       each `bluesky` list in tags.json ordered most-important-first (the long
