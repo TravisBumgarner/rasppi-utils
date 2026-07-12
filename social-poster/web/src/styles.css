@@ -686,6 +686,36 @@ body {
   background: var(--grey-bg);
 }
 
+/* Row-selection checkbox column. */
+.queue-select {
+  width: 1%;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.queue-select input {
+  cursor: pointer;
+}
+
+/* Bulk-action bar shown when rows are selected. */
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  margin-bottom: -12px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.bulk-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-right: auto;
+}
+
 .queue-caption {
   max-width: 320px;
 }
