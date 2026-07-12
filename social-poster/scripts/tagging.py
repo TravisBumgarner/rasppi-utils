@@ -17,12 +17,12 @@ info. This module turns that into ready-to-review captions:
    focal length), with the same per-camera label overrides as the old tool.
    Film posts use the analog convention instead: one ``📷 <camera> /
    🎞️ <film stock>`` line (Bluesky keyword feeds match on it).
-4. Render the caption template per platform. Instagram gets every priority
-   item (feature hubs — hashtags and @mentions), then a random draw from the
-   general tags up to 5 hashtags total: Instagram deprioritizes posts with
-   more than ~5 hashtags (2026 guidance), and shuffling varies the tag mix
-   across posts. Bluesky gets its own tag set, trimmed from the end so the
-   caption fits the 300-character post limit.
+4. Render the caption template per platform. Instagram is hard-capped at 5
+   hashtags total (2026 guidance deprioritizes posts with more): priority
+   hashtags fill the budget first (feature hubs), then a random draw from the
+   general tags tops it up so the mix varies across posts. @mentions don't
+   count toward the cap and are always kept. Bluesky gets its own tag set,
+   trimmed from the end so the caption fits the 300-character post limit.
 
 Bulk ingestion calls ``extract_captions`` once per uploaded image in a
 background thread. A raised ValueError marks that ingest item's tagging as
@@ -276,11 +276,12 @@ def _lookup(tree: Dict, parts: List[str]) -> Optional[List[Dict]]:
     return list(reversed(buckets))
 
 
-def _generate_social_tags(keywords: List[str]) -> Dict[str, List[str]]:
-    """Map ``cameracoffeewander|...`` keywords to per-platform tag lists.
+def _collect_tag_lists(keywords: List[str]) -> Dict[str, List[str]]:
+    """Gather the raw per-platform tag lists for a photo's keywords, deduped.
 
-    Raises ValueError naming any keyword the tag tree doesn't know, so the
-    tree and the Lightroom hierarchy stay in sync (same contract as the old
+    Returns ``{"priority": [...], "general": [...], "bluesky": [...]}`` in tag-
+    tree order. Raises ValueError naming any keyword the tree doesn't know, so
+    the tree and the Lightroom hierarchy stay in sync (same contract as the old
     tool).
     """
     tree = _load_tag_tree()
@@ -308,25 +309,55 @@ def _generate_social_tags(keywords: List[str]) -> Dict[str, List[str]]:
     if errors:
         raise ValueError("; ".join(errors))
 
-    # Every priority item is kept (feature hubs are the point); the remaining
-    # hashtag budget is filled with a random draw from the general tags so the
-    # mix varies post to post.
-    instagram = list(dict.fromkeys(priority))
-    hashtags = sum(1 for t in instagram if t.startswith("#"))
-    pool = [t for t in dict.fromkeys(general) if t not in instagram]
-    random.shuffle(pool)
-    for tag in pool:
-        if tag.startswith("@"):
-            instagram.append(tag)
-        elif hashtags < INSTAGRAM_HASHTAG_LIMIT:
-            instagram.append(tag)
-            hashtags += 1
-
-    malformed = [t for t in instagram if t[:2] in ("##", "@@", "#@", "@#")]
+    malformed = [
+        t
+        for t in priority + general + bluesky
+        if t[:2] in ("##", "@@", "#@", "@#")
+    ]
     if malformed:
         raise ValueError(f"Malformed tag(s) in tag tree: {malformed}")
 
-    return {"instagram": instagram, "bluesky": list(dict.fromkeys(bluesky))}
+    return {
+        "priority": list(dict.fromkeys(priority)),
+        "general": list(dict.fromkeys(general)),
+        "bluesky": list(dict.fromkeys(bluesky)),
+    }
+
+
+def _generate_social_tags(keywords: List[str]) -> Dict[str, List[str]]:
+    """Map ``cameracoffeewander|...`` keywords to the per-platform tag lists
+    that actually post: Instagram capped/selected, Bluesky as-is."""
+    lists = _collect_tag_lists(keywords)
+    priority = lists["priority"]
+    general = lists["general"]
+    bluesky = lists["bluesky"]
+
+    # Instagram deprioritizes posts with more than ~5 hashtags, so hashtags are
+    # hard-capped at INSTAGRAM_HASHTAG_LIMIT: priority hashtags fill the budget
+    # first (feature hubs matter most), then a random draw from the general tags
+    # tops it up so the mix varies post to post. @mentions don't count toward
+    # the cap and are always kept.
+    instagram: List[str] = []
+    hashtags = 0
+
+    def _add(tag: str) -> None:
+        nonlocal hashtags
+        if tag in instagram:
+            return
+        if tag.startswith("#"):
+            if hashtags >= INSTAGRAM_HASHTAG_LIMIT:
+                return
+            hashtags += 1
+        instagram.append(tag)
+
+    for tag in priority:
+        _add(tag)
+    pool = [t for t in general if t not in instagram]
+    random.shuffle(pool)
+    for tag in pool:
+        _add(tag)
+
+    return {"instagram": instagram, "bluesky": bluesky}
 
 
 # ---------------------------------------------------------------------------

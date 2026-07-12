@@ -333,10 +333,11 @@ def test_instagram_general_tags_are_shuffled(tmp_path, monkeypatch):
     assert len(draws) > 1  # 10 draws of 5-from-40 all identical ≈ impossible
 
 
-def test_instagram_priority_never_dropped_and_mentions_uncounted(
+def test_instagram_hashtags_hard_capped_priority_first_mentions_uncounted(
         tmp_path, monkeypatch):
-    # 6 priority hashtags exceed the budget on their own: all kept, no general
-    # hashtags added. Mentions ride along without consuming the budget.
+    # 6 priority hashtags exceed the 5 budget: only the first 5 survive, no
+    # general hashtags added. Mentions (priority and general) ride along
+    # without consuming the budget.
     tree = {
         "Special": {
             "Hubs": {
@@ -355,10 +356,11 @@ def test_instagram_priority_never_dropped_and_mentions_uncounted(
 
     tag_line = tagging.extract_captions(str(photo))["instagram"].splitlines()[-1]
     tags = tag_line.split(" ")
-    assert tags[:7] == [f"#hub{i}" for i in range(6)] + ["@bighub"]
     hashtags = [t for t in tags if t.startswith("#")]
-    assert hashtags == [f"#hub{i}" for i in range(6)]  # no general hashtags
-    assert "@generalmention" in tags  # mentions don't consume the budget
+    # Hard-capped at 5, priority order preserved; #hub5 and both #extra dropped.
+    assert hashtags == [f"#hub{i}" for i in range(5)]
+    assert "@bighub" in tags  # priority mention kept
+    assert "@generalmention" in tags  # general mention kept, uncounted
 
 
 def test_bluesky_caption_fits_300_chars(tmp_path, monkeypatch):
