@@ -1,23 +1,46 @@
-import { useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useCheckTags } from '../hooks/useTagging';
-import type { TagCheckFile } from '../api/types';
+import type { TagCheckResult, TagNode } from '../api/types';
 
-/** Human-readable form of a `A|B|C` hierarchy tag: `A > B > C`, matching the
- * `Place > USA > Alaska > State` convention used in the tag TODO. */
-function prettyTag(tag: string): string {
-  return tag.split('|').join(' > ');
+/** Render one level of the tag-status tree. Existing nodes are green
+ * breadcrumbs; nodes that need making are red and bold. Depth drives the
+ * indent and the `→` connector, so the hierarchy reads as a tree. */
+function TagTree({ nodes, depth = 0 }: { nodes: TagNode[]; depth?: number }) {
+  return (
+    <ul className="tagtree">
+      {nodes.map((node) => (
+        <li key={node.name}>
+          <span
+            className={`tagtree-node ${
+              node.exists ? 'tagtree-node--exists' : 'tagtree-node--missing'
+            }`}
+            style={{ paddingLeft: `${depth * 20}px` }}
+          >
+            {depth > 0 && <span className="tagtree-arrow">→ </span>}
+            {node.name}
+          </span>
+          {node.children.length > 0 && (
+            <TagTree nodes={node.children} depth={depth + 1} />
+          )}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 /**
  * Tag Checker: drop a batch of Lightroom exports and see which
- * `cameracoffeewander|...` keywords aren't registered in the tag tree yet —
- * the tags that still need adding to `config/tags.json`. Nothing is staged or
- * scheduled; it's a read-only check. Dropped batches accumulate so you can
- * feed exports in waves.
+ * `cameracoffeewander|...` keywords aren't registered in the tag tree yet,
+ * shown as a tree — existing levels in green for context, the tags that still
+ * need adding to `config/tags.json` in red. Nothing is staged or scheduled.
+ * Dropped photos accumulate so you can feed exports in waves.
  */
 export function TagCheckerModal({ onClose }: { onClose: () => void }) {
   const check = useCheckTags();
-  const [files, setFiles] = useState<TagCheckFile[]>([]);
+  // Every photo dropped so far — resent on each drop so the server rebuilds the
+  // full merged tree over the whole batch.
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [result, setResult] = useState<TagCheckResult | null>(null);
 
   const fileInput = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -27,31 +50,30 @@ export function TagCheckerModal({ onClose }: { onClose: () => void }) {
       (f) => f.type.startsWith('image/') || /\.avif$/i.test(f.name)
     );
     if (images.length > 0) {
-      check.mutate(images, {
-        onSuccess: (res) => setFiles((prev) => [...prev, ...res.files]),
-      });
+      const batch = [...photos, ...images];
+      setPhotos(batch);
+      check.mutate(batch, { onSuccess: setResult });
     }
     if (fileInput.current) {
       fileInput.current.value = '';
     }
   };
 
-  // The worklist: every unregistered tag across all dropped photos, once each.
-  const aggregate = useMemo(() => {
-    const seen: string[] = [];
-    for (const file of files) {
-      for (const tag of file.unregistered) {
-        if (!seen.includes(tag)) {
-          seen.push(tag);
-        }
-      }
-    }
-    return seen;
-  }, [files]);
-
-  const copyAggregate = () => {
-    void navigator.clipboard?.writeText(aggregate.map(prettyTag).join('\n'));
+  const clear = () => {
+    setPhotos([]);
+    setResult(null);
   };
+
+  const copyMissing = () => {
+    if (result) {
+      void navigator.clipboard?.writeText(
+        result.missing.map((m) => m.split('|').join(' > ')).join('\n')
+      );
+    }
+  };
+
+  const missingCount = result?.missing.length ?? 0;
+  const erroredFiles = result?.files.filter((f) => f.error) ?? [];
 
   return (
     <div className="modal-backdrop" onClick={onClose} role="presentation">
@@ -102,55 +124,49 @@ export function TagCheckerModal({ onClose }: { onClose: () => void }) {
 
           <p className="muted field-help">
             Drop photos to see which <code>cameracoffeewander</code> keywords
-            aren't registered in the tag tree yet. Nothing is scheduled — this
-            just lists the tags to add to <code>config/tags.json</code>.
+            still need adding to <code>config/tags.json</code>.{' '}
+            <span className="tagtree-node--exists">Green</span> already exists;{' '}
+            <span className="tagtree-node--missing">red</span> needs to be made.
           </p>
 
-          {aggregate.length > 0 && (
+          {check.isPending && (
+            <div className="tagcheck-processing" role="status" aria-live="polite">
+              <span className="spinner" aria-hidden="true" />
+              Checking {photos.length} photo{photos.length === 1 ? '' : 's'}…
+            </div>
+          )}
+
+          {result && (
             <div className="tagcheck-summary">
               <div className="field-label-row">
                 <span className="field-label">
-                  {aggregate.length} tag{aggregate.length === 1 ? '' : 's'} to
-                  register
+                  {missingCount === 0
+                    ? 'Nothing to make — all keywords exist ✓'
+                    : `${missingCount} tag${missingCount === 1 ? '' : 's'} to make`}
                 </span>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={copyAggregate}
-                >
-                  Copy
-                </button>
+                {missingCount > 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={copyMissing}
+                  >
+                    Copy
+                  </button>
+                )}
               </div>
-              <ul className="tagcheck-list">
-                {aggregate.map((tag) => (
-                  <li key={tag}>
-                    <code>{prettyTag(tag)}</code>
-                  </li>
-                ))}
-              </ul>
+              {missingCount > 0 && <TagTree nodes={result.tree} />}
             </div>
           )}
 
-          {files.length > 0 && aggregate.length === 0 && (
-            <span className="state-success">
-              All keywords are registered — nothing to add. ✓
-            </span>
-          )}
-
-          {files.map((file, index) => (
-            <div key={`${file.filename}:${index}`} className="tagcheck-file">
-              <span className="tagcheck-file-name">{file.filename}</span>
-              {file.error ? (
-                <span className="muted">{file.error}</span>
-              ) : file.unregistered.length === 0 ? (
-                <span className="state-success">All registered ✓</span>
-              ) : (
-                <span className="field-error">
-                  {file.unregistered.map(prettyTag).join(', ')}
-                </span>
-              )}
+          {erroredFiles.length > 0 && (
+            <div className="tagcheck-errors">
+              {erroredFiles.map((file, index) => (
+                <div key={`${file.filename}:${index}`} className="muted">
+                  {file.filename}: {file.error}
+                </div>
+              ))}
             </div>
-          ))}
+          )}
 
           <div
             className="bulk-dropzone"
@@ -165,9 +181,9 @@ export function TagCheckerModal({ onClose }: { onClose: () => void }) {
           >
             {check.isPending
               ? 'Checking…'
-              : files.length === 0
+              : photos.length === 0
                 ? 'Drop photos here, or click to browse'
-                : 'Drop more photos, or click to browse'}
+                : `Drop more photos, or click to browse (${photos.length} checked)`}
           </div>
 
           {check.isError && (
@@ -176,12 +192,8 @@ export function TagCheckerModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="modal-actions">
-          {files.length > 0 && (
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => setFiles([])}
-            >
+          {photos.length > 0 && (
+            <button type="button" className="btn btn-ghost" onClick={clear}>
               Clear
             </button>
           )}

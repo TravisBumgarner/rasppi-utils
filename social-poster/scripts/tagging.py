@@ -446,16 +446,66 @@ def unregistered_tags(image_path: str) -> List[str]:
     if not keywords:
         raise ValueError("No Lightroom hierarchical keywords (lr:hierarchicalSubject)")
 
+    return [
+        keyword.replace(f"{TAG_ROOT}|", "").split("|")
+        for keyword in keywords
+        if TAG_ROOT in keyword
+    ]
+
+
+def _path_registered(tree: Dict, parts: List[str]) -> bool:
+    """True when every part of the hierarchy exists as a key in the tag tree."""
+    node: object = tree
+    for part in parts:
+        if not isinstance(node, dict) or part not in node:
+            return False
+        node = node[part]
+    return True
+
+
+def missing_paths(paths: List[List[str]]) -> List[str]:
+    """The ``A|B|C`` hierarchy strings that aren't fully registered in the tag
+    tree, deduplicated in first-seen order — the tags that need to be made."""
     tree = _load_tag_tree()
     missing: List[str] = []
-    for keyword in keywords:
-        if TAG_ROOT not in keyword:
-            continue
-        hierarchy = keyword.replace(f"{TAG_ROOT}|", "")
-        buckets = _lookup(tree, hierarchy.split("|"))
-        registered = buckets is not None and any(
-            b["general"] or b["priority"] for b in buckets
-        )
-        if not registered and hierarchy not in missing:
-            missing.append(hierarchy)
+    for parts in paths:
+        if not _path_registered(tree, parts):
+            key = "|".join(parts)
+            if key not in missing:
+                missing.append(key)
     return missing
+
+
+def tag_status_tree(paths: List[List[str]]) -> List[Dict]:
+    """Merge hierarchy ``paths`` into a nested tree annotated with whether each
+    node exists in the tag tree, pruned to only the branches that lead to a
+    missing node.
+
+    Each node is ``{"name", "exists", "children"}``. Fully-registered branches
+    are dropped (nothing to do there); a kept branch shows its existing
+    ancestors (breadcrumb context) down to the missing node(s) beneath them.
+    Children are sorted by name so the output is stable.
+    """
+    tree = _load_tag_tree()
+
+    # Merge every path into one prefix tree.
+    merged: Dict = {}
+    for parts in paths:
+        node = merged
+        for part in parts:
+            node = node.setdefault(part, {})
+
+    def build(subtree: Dict, json_node: object) -> List[Dict]:
+        nodes: List[Dict] = []
+        for name in sorted(subtree):
+            exists = isinstance(json_node, dict) and name in json_node
+            child_json = json_node[name] if exists else None  # type: ignore[index]
+            children = build(subtree[name], child_json)
+            # Keep a node only if it (or something under it) needs making.
+            if not exists or children:
+                nodes.append(
+                    {"name": name, "exists": exists, "children": children}
+                )
+        return nodes
+
+    return build(merged, tree)

@@ -338,29 +338,41 @@ def _check(client, filenames):
     )
 
 
-def test_tag_check_aggregates_unregistered_tags(tmp_path, monkeypatch):
+def test_tag_check_merges_batch_into_status_tree(tmp_path, monkeypatch):
     _use_temp_db(tmp_path, monkeypatch)
     client = _client()
 
-    # Two photos share an unregistered tag; the aggregate lists it once.
+    # Point the tag tree at a temp file so existence is deterministic.
+    tags_path = tmp_path / "tags.json"
+    tags_path.write_text(json.dumps({"Place": {"USA": {"California": {}}}}))
+    monkeypatch.setattr(tagging, "TAGS_PATH", tags_path)
+
+    # Two photos' keyword paths are merged across the batch.
     with patch.object(
         tagging,
-        "unregistered_tags",
+        "keyword_paths",
         side_effect=[
-            ["Place|USA|Alaska|State"],
-            ["Place|USA|Alaska|State", "NationalPark|Denali"],
+            [["Place", "USA", "California"]],  # fully registered → pruned
+            [["Place", "USA", "Atlantis", "State"]],  # missing branch
         ],
     ):
         res = _check(client, ["a.jpg", "b.jpg"])
 
     assert res.status_code == 200
     body = res.get_json()
-    assert body["unregistered"] == ["Place|USA|Alaska|State", "NationalPark|Denali"]
+    assert body["missing"] == ["Place|USA|Atlantis|State"]
+    # Tree keeps the Place > USA breadcrumb (green) down to the missing nodes.
+    assert body["tree"][0]["name"] == "Place"
+    assert body["tree"][0]["exists"] is True
+    usa = body["tree"][0]["children"][0]
+    assert usa["name"] == "USA" and usa["exists"] is True
+    atlantis = usa["children"][0]
+    assert atlantis == {
+        "name": "Atlantis",
+        "exists": False,
+        "children": [{"name": "State", "exists": False, "children": []}],
+    }
     assert [f["filename"] for f in body["files"]] == ["a.jpg", "b.jpg"]
-    assert body["files"][1]["unregistered"] == [
-        "Place|USA|Alaska|State",
-        "NationalPark|Denali",
-    ]
     # Nothing was staged — the checker is read-only.
     assert client.get("/api/ingest").get_json() == []
 
@@ -371,7 +383,7 @@ def test_tag_check_reports_per_photo_metadata_errors(tmp_path, monkeypatch):
 
     with patch.object(
         tagging,
-        "unregistered_tags",
+        "keyword_paths",
         side_effect=[ValueError("No XMP metadata found"), []],
     ):
         res = _check(client, ["no-xmp.jpg", "clean.jpg"])
@@ -379,10 +391,10 @@ def test_tag_check_reports_per_photo_metadata_errors(tmp_path, monkeypatch):
     assert res.status_code == 200
     body = res.get_json()
     assert body["files"][0]["error"] == "No XMP metadata found"
-    assert body["files"][0]["unregistered"] == []
     assert body["files"][1]["error"] is None
     # A photo that errors contributes nothing to the worklist.
-    assert body["unregistered"] == []
+    assert body["missing"] == []
+    assert body["tree"] == []
 
 
 def test_tag_check_rejects_unsupported_type(tmp_path, monkeypatch):

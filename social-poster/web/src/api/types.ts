@@ -156,18 +156,27 @@ export interface TaggingPreview {
   error: string | null;
 }
 
-/** Per-photo result of the tag checker: the `cameracoffeewander|...` hierarchy
- * tags the tree can't resolve. `error` is set (and the list empty) when the
- * photo lacks usable Lightroom metadata. */
+/** A node in the tag-status tree: a keyword hierarchy level, flagged as
+ * existing in the tag tree (green) or needing to be made (red). The tree is
+ * pruned to branches that lead to a missing node. */
+export interface TagNode {
+  name: string;
+  exists: boolean;
+  children: TagNode[];
+}
+
+/** Per-photo metadata outcome. `error` is set when the photo lacks usable
+ * Lightroom metadata (no XMP / no keywords). */
 export interface TagCheckFile {
   filename: string;
-  unregistered: string[];
   error: string | null;
 }
 
-/** Result of checking a batch of photos. `unregistered` is the deduplicated
- * union across every file — the tags that still need registering. */
+/** Result of checking a batch of photos: the merged hierarchy tree of tags
+ * that need making (with existing breadcrumb ancestors), the flat `A|B|C`
+ * worklist, and per-photo errors. */
 export interface TagCheckResult {
+  tree: TagNode[];
+  missing: string[];
   files: TagCheckFile[];
-  unregistered: string[];
 }

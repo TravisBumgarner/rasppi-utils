@@ -91,47 +91,96 @@ def test_photo_without_keywords_raises(tmp_path):
         tagging.extract_captions(str(photo))
 
 
-def test_unregistered_tags_lists_only_unknown_keywords(tmp_path):
+def test_keyword_paths_strips_root_and_skips_non_root(tmp_path):
     photo = tmp_path / "photo.jpg"
     _write_photo(
         photo,
         [
-            "cameracoffeewander|Camera|NikonZ5",  # registered
-            "cameracoffeewander|Place|USA|Atlantis|State",  # not in the tree
+            "cameracoffeewander|Camera|NikonZ5",
+            "cameracoffeewander|Place|USA|Atlantis|State",
             "gallery|ignored",  # non-root keyword, always skipped
         ],
     )
 
-    assert tagging.unregistered_tags(str(photo)) == ["Place|USA|Atlantis|State"]
+    assert tagging.keyword_paths(str(photo)) == [
+        ["Camera", "NikonZ5"],
+        ["Place", "USA", "Atlantis", "State"],
+    ]
 
 
-def test_unregistered_tags_flags_empty_stub_nodes(tmp_path, monkeypatch):
-    # A hierarchy that exists in the tree but carries no tags/accounts is still
-    # unregistered — nothing to post, so it needs filling in.
-    tree = {"Place": {"USA": {"Nowhere": {"general": [], "priority": []}}}}
-    tags_path = tmp_path / "tags.json"
-    tags_path.write_text(json.dumps(tree))
-    monkeypatch.setattr(tagging, "TAGS_PATH", tags_path)
-
-    photo = tmp_path / "photo.jpg"
-    _write_photo(photo, ["cameracoffeewander|Place|USA|Nowhere"], with_exif=False)
-
-    assert tagging.unregistered_tags(str(photo)) == ["Place|USA|Nowhere"]
-
-
-def test_unregistered_tags_empty_when_all_registered(tmp_path):
-    photo = tmp_path / "photo.jpg"
-    _write_photo(photo, ["cameracoffeewander|Camera|NikonZ5"])
-
-    assert tagging.unregistered_tags(str(photo)) == []
-
-
-def test_unregistered_tags_requires_metadata(tmp_path):
+def test_keyword_paths_requires_metadata(tmp_path):
     photo = tmp_path / "photo.jpg"
     Image.new("RGB", (8, 8), "gray").save(photo)
 
     with pytest.raises(ValueError, match="No XMP metadata"):
-        tagging.unregistered_tags(str(photo))
+        tagging.keyword_paths(str(photo))
+
+
+def _tag_tree(tmp_path, monkeypatch, tree):
+    tags_path = tmp_path / "tags.json"
+    tags_path.write_text(json.dumps(tree))
+    monkeypatch.setattr(tagging, "TAGS_PATH", tags_path)
+
+
+def test_missing_paths_lists_unregistered_only(tmp_path, monkeypatch):
+    _tag_tree(tmp_path, monkeypatch, {"Place": {"USA": {"California": {}}}})
+
+    paths = [
+        ["Place", "USA", "California"],  # registered
+        ["Place", "USA", "Atlantis", "State"],  # not in the tree
+        ["Place", "USA", "Atlantis", "State"],  # duplicate — deduped
+    ]
+    assert tagging.missing_paths(paths) == ["Place|USA|Atlantis|State"]
+
+
+def test_tag_status_tree_prunes_existing_and_marks_nodes(tmp_path, monkeypatch):
+    _tag_tree(tmp_path, monkeypatch, {"Place": {"USA": {"California": {}}}})
+
+    paths = [
+        ["Camera", "NikonZ5"],  # fully registered? no — Camera missing entirely
+        ["Place", "USA", "California"],  # fully registered → pruned away
+        ["Place", "USA", "Atlantis", "State"],  # Atlantis/State missing
+    ]
+    # Only branches leading to a missing node survive. Camera is missing, and
+    # Place is kept as a breadcrumb down to the missing Atlantis > State.
+    assert tagging.tag_status_tree(paths) == [
+        {
+            "name": "Camera",
+            "exists": False,
+            "children": [
+                {"name": "NikonZ5", "exists": False, "children": []}
+            ],
+        },
+        {
+            "name": "Place",
+            "exists": True,
+            "children": [
+                {
+                    "name": "USA",
+                    "exists": True,
+                    "children": [
+                        {
+                            "name": "Atlantis",
+                            "exists": False,
+                            "children": [
+                                {
+                                    "name": "State",
+                                    "exists": False,
+                                    "children": [],
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+        },
+    ]
+
+
+def test_tag_status_tree_empty_when_all_registered(tmp_path, monkeypatch):
+    _tag_tree(tmp_path, monkeypatch, {"Place": {"USA": {"California": {}}}})
+
+    assert tagging.tag_status_tree([["Place", "USA", "California"]]) == []
 
 
 def test_film_camera_keyword_overrides_scanner_exif(tmp_path, monkeypatch):

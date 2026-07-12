@@ -1463,29 +1463,67 @@ textarea {
   background: var(--bg-elev-2);
 }
 
-.tagcheck-list {
+/* Tag-status tree: nested lists, one node per row, indent via inline padding. */
+.tagtree {
+  list-style: none;
   margin: 8px 0 0;
-  padding-left: 18px;
+  padding: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.tagtree .tagtree {
+  margin: 0;
+}
+
+.tagtree-node--exists {
+  color: var(--success, #2ecc71);
+}
+
+.tagtree-node--missing {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.tagtree-arrow {
+  opacity: 0.6;
+}
+
+.tagcheck-errors {
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-
-.tagcheck-list code {
   font-size: 13px;
 }
 
-.tagcheck-file {
+.tagcheck-processing {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 8px;
   font-size: 13px;
+  color: var(--text);
 }
 
-.tagcheck-file-name {
-  font-weight: 600;
-  word-break: break-all;
+/* Small inline loading spinner. */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spinner-rotate 0.7s linear infinite;
+}
+
+@keyframes spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 1.5s;
+  }
 }

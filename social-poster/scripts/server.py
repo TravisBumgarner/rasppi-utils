@@ -1294,16 +1294,18 @@ def tagging_preview():
 def tagging_check():
     """Report which Lightroom keywords on a batch of photos aren't registered.
 
-    Field: images (one or more files). For each photo, list the
-    ``cameracoffeewander|...`` hierarchy tags the tag tree can't resolve — the
-    tags that still need adding to ``config/tags.json``. Nothing is staged or
-    saved; photos are inspected in temp files and discarded.
+    Field: images (one or more files). Every ``cameracoffeewander|...`` keyword
+    across the batch is merged into one hierarchy tree, annotated with whether
+    each node exists in ``config/tags.json`` and pruned to just the branches
+    that lead to a missing node — so the caller can render exactly the tags
+    that still need making, in context. Nothing is staged or saved; photos are
+    inspected in temp files and discarded.
 
-    Returns ``{"files": [{"filename", "unregistered": [...], "error"}],
-    "unregistered": [...]}`` — the top-level list is the deduplicated union
-    across every photo (first-seen order), the ready-to-register worklist.
-    Photos missing usable metadata carry an ``error`` and an empty list; that's
-    a normal per-photo outcome, so the request still succeeds (200).
+    Returns ``{"tree": [...], "missing": [...], "files": [{"filename",
+    "error"}]}``. ``tree`` nodes are ``{"name", "exists", "children"}``;
+    ``missing`` is the deduplicated ``A|B|C`` worklist. Photos missing usable
+    metadata carry an ``error``; that's a normal per-photo outcome, so the
+    request still succeeds (200).
     """
     images = [f for f in request.files.getlist("images") if f and f.filename]
     if not images:
@@ -1317,24 +1319,28 @@ def tagging_check():
         return jsonify({"error": f"unsupported image type(s): {bad}"}), 400
 
     files: List[Dict] = []
-    aggregate: List[str] = []
+    all_paths: List[List[str]] = []
     for image in images:
         ext = Path(image.filename).suffix.lower()
         with tempfile.NamedTemporaryFile(suffix=ext) as tmp:
             image.save(tmp.name)
             try:
-                missing = tagging.unregistered_tags(tmp.name)
+                all_paths.extend(tagging.keyword_paths(tmp.name))
                 error = None
             except Exception as exc:  # noqa: BLE001 - missing metadata is expected.
-                missing, error = [], str(exc)
-        files.append(
-            {"filename": image.filename, "unregistered": missing, "error": error}
-        )
-        for tag in missing:
-            if tag not in aggregate:
-                aggregate.append(tag)
+                error = str(exc)
+        files.append({"filename": image.filename, "error": error})
 
-    return jsonify({"files": files, "unregistered": aggregate}), 200
+    return (
+        jsonify(
+            {
+                "tree": tagging.tag_status_tree(all_paths),
+                "missing": tagging.missing_paths(all_paths),
+                "files": files,
+            }
+        ),
+        200,
+    )
 
 
 @app.route("/api/images/<path:filename>", methods=["GET"])
