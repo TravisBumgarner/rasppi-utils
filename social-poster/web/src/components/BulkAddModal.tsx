@@ -89,6 +89,14 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
 
   const [showSchedule, setShowSchedule] = useState(false);
 
+  // Where slot-filling starts. 'now' = next free slot from now; 'afterLast' =
+  // append strictly after the current queue's last post; 'custom' = a picked
+  // datetime. Occupied slots are always skipped regardless of mode.
+  const [startMode, setStartMode] = useState<'now' | 'afterLast' | 'custom'>(
+    'now'
+  );
+  const [customStart, setCustomStart] = useState('');
+
   // Target accounts — the last-used selection (localStorage), else all.
   const [accountIds, setAccountIds] = useState<number[] | null>(null);
   useEffect(() => {
@@ -187,10 +195,30 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
     () => new Set((posts ?? []).map((p) => p.scheduled_at)),
     [posts]
   );
-  const slots = useMemo(
-    () => generateSlots(effectiveSchedule, items.length, occupied),
-    [effectiveSchedule, items.length, occupied]
-  );
+  // The furthest-out scheduled post — where the current queue ends, so it's
+  // clear when this batch will start landing. ISO strings sort lexically.
+  const lastScheduledAt = useMemo(() => {
+    const times = (posts ?? []).map((p) => p.scheduled_at).sort();
+    return times.length > 0 ? times[times.length - 1] : null;
+  }, [posts]);
+  // Resolve the start-date toggle into the Date slot-filling begins after.
+  // Computed inside the slots memo so `now` is only sampled when deps change.
+  const slots = useMemo(() => {
+    let from = new Date();
+    if (startMode === 'afterLast' && lastScheduledAt) {
+      from = new Date(lastScheduledAt);
+    } else if (startMode === 'custom' && customStart) {
+      from = new Date(customStart);
+    }
+    return generateSlots(effectiveSchedule, items.length, occupied, from);
+  }, [
+    effectiveSchedule,
+    items.length,
+    occupied,
+    startMode,
+    customStart,
+    lastScheduledAt,
+  ]);
 
   const anyPending = items.some((i) => i.tag_status === 'pending');
   const scheduleEmpty = effectiveSchedule.slots.length === 0;
@@ -244,6 +272,63 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
         <div className="bulk-body">
           {/* LEFT: schedule template + accounts + upload */}
           <div className="bulk-config">
+            <div className="field">
+              <span className="field-label">Last scheduled post</span>
+              {lastScheduledAt ? (
+                <span>{formatDateTime(new Date(lastScheduledAt))}</span>
+              ) : (
+                <span className="muted">No posts scheduled yet</span>
+              )}
+            </div>
+
+            <div className="field">
+              <span className="field-label">Start filling from</span>
+              <div className="seg">
+                <button
+                  type="button"
+                  className={`seg-btn ${startMode === 'now' ? 'seg-btn--active' : ''}`}
+                  onClick={() => setStartMode('now')}
+                >
+                  Now
+                </button>
+                <button
+                  type="button"
+                  className={`seg-btn ${startMode === 'afterLast' ? 'seg-btn--active' : ''}`}
+                  onClick={() => setStartMode('afterLast')}
+                  disabled={!lastScheduledAt}
+                  title={
+                    lastScheduledAt
+                      ? undefined
+                      : 'No scheduled posts to start after'
+                  }
+                >
+                  After last post
+                </button>
+                <button
+                  type="button"
+                  className={`seg-btn ${startMode === 'custom' ? 'seg-btn--active' : ''}`}
+                  onClick={() => {
+                    if (!customStart) {
+                      setCustomStart(dateToDatetimeLocal(new Date()));
+                    }
+                    setStartMode('custom');
+                  }}
+                >
+                  Custom
+                </button>
+              </div>
+              {startMode === 'custom' && (
+                <input
+                  type="datetime-local"
+                  value={customStart}
+                  onChange={(e) => setCustomStart(e.target.value)}
+                />
+              )}
+              <span className="muted field-help">
+                Occupied slots are always skipped, so nothing double-books.
+              </span>
+            </div>
+
             <div className="field">
               <div className="field-label-row">
                 <span className="field-label">Weekly schedule</span>

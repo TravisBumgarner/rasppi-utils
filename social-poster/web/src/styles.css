@@ -1158,6 +1158,47 @@ textarea {
   padding-right: 4px;
 }
 
+/* Segmented toggle (e.g. the bulk-add start-date control). */
+.seg {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.seg-btn {
+  flex: 1;
+  padding: 6px 8px;
+  border: none;
+  border-left: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.seg-btn:first-child {
+  border-left: none;
+}
+
+.seg-btn:hover:not(:disabled):not(.seg-btn--active) {
+  background: var(--bg-elev-2);
+  color: var(--text);
+}
+
+.seg-btn--active {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.seg-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* Read-only schedule summary in the bulk modal (edited in its own modal). */
 .schedule-summary {
   display: flex;
