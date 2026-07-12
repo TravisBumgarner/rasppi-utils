@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { usePosts, useSendTargetNow, useDeleteTarget } from '../hooks/usePosts';
 import { useAccounts } from '../hooks/useAccounts';
 import type { Post, Target } from '../api/types';
@@ -62,6 +62,9 @@ export function ActivityView({ onEditPost }: ActivityViewProps) {
     key: 'status',
     dir: 'asc',
   });
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
 
   const rows = useMemo<Row[]>(() => {
     const all = (posts ?? []).flatMap((post) =>
@@ -91,6 +94,59 @@ export function ActivityView({ onEditPost }: ActivityViewProps) {
         ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
         : { key, dir: 'asc' },
     );
+
+  // Only rows whose status allows deletion are selectable.
+  const deletableIds = useMemo(
+    () => rows.filter((r) => rowActions(r.status).canDelete).map((r) => r.target.id),
+    [rows],
+  );
+
+  // Drop selections that fall out of view (filters/sort) or become undeletable.
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === 0) return prev;
+      const allowed = new Set(deletableIds);
+      const next = new Set([...prev].filter((id) => allowed.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [deletableIds]);
+
+  const allSelected =
+    deletableIds.length > 0 && deletableIds.every((id) => selectedIds.has(id));
+  const someSelected = selectedIds.size > 0 && !allSelected;
+
+  const toggleRow = (id: number) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const toggleAll = () =>
+    setSelectedIds(allSelected ? new Set() : new Set(deletableIds));
+
+  const handleBulkDelete = async () => {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    if (
+      !window.confirm(
+        `Delete ${ids.length} record${ids.length === 1 ? '' : 's'}? This can't be undone.`,
+      )
+    ) {
+      return;
+    }
+    setBulkError(null);
+    setBulkDeleting(true);
+    try {
+      await Promise.all(ids.map((id) => deleteTarget.mutateAsync(id)));
+      setSelectedIds(new Set());
+    } catch (e) {
+      setBulkError(e instanceof Error ? e.message : 'Bulk delete failed.');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
 
   const sortableHeader = (key: SortKey, label: string) => (
     <th>
@@ -152,12 +208,47 @@ export function ActivityView({ onEditPost }: ActivityViewProps) {
         </label>
       </div>
 
+      {selectedIds.size > 0 && (
+        <div className="bulk-bar">
+          <span className="bulk-count">
+            {selectedIds.size} selected
+          </span>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => setSelectedIds(new Set())}
+          >
+            Clear
+          </button>
+          <button
+            type="button"
+            className="btn btn-danger btn-sm"
+            disabled={bulkDeleting}
+            onClick={handleBulkDelete}
+          >
+            {bulkDeleting ? 'Deleting…' : `Delete ${selectedIds.size}`}
+          </button>
+        </div>
+      )}
+
       {rows.length === 0 ? (
         <div className="state-msg">No records match.</div>
       ) : (
         <table className="queue-table">
           <thead>
             <tr>
+              <th className="queue-select">
+                <input
+                  type="checkbox"
+                  aria-label="Select all deletable rows"
+                  checked={allSelected}
+                  disabled={deletableIds.length === 0}
+                  ref={(el) => {
+                    if (el) el.indeterminate = someSelected;
+                  }}
+                  onChange={toggleAll}
+                />
+              </th>
               <th>Image</th>
               {sortableHeader('caption', 'Caption')}
               {sortableHeader('scheduled', 'Scheduled')}
@@ -179,6 +270,16 @@ export function ActivityView({ onEditPost }: ActivityViewProps) {
                       : undefined
                   }
                 >
+                  <td className="queue-select">
+                    {actions.canDelete && (
+                      <input
+                        type="checkbox"
+                        aria-label={`Select @${target.username} record`}
+                        checked={selectedIds.has(target.id)}
+                        onChange={() => toggleRow(target.id)}
+                      />
+                    )}
+                  </td>
                   <td>
                     <img className="queue-thumb" src={post.image_url} alt="" />
                   </td>
@@ -269,9 +370,14 @@ export function ActivityView({ onEditPost }: ActivityViewProps) {
           Send failed: {sendTarget.error.message}
         </div>
       )}
-      {deleteTarget.isError && (
+      {deleteTarget.isError && !bulkDeleting && (
         <div className="state-msg state-error">
           Delete failed: {deleteTarget.error.message}
+        </div>
+      )}
+      {bulkError && (
+        <div className="state-msg state-error">
+          Bulk delete failed: {bulkError}
         </div>
       )}
     </div>
