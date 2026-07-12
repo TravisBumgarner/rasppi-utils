@@ -53,6 +53,25 @@ def _upload(client, filenames):
     )
 
 
+def _jpeg_bytes(width, height):
+    """A solid-color JPEG of the given size, for real crop/aspect tests."""
+    from io import BytesIO as _BytesIO
+
+    from PIL import Image
+
+    buf = _BytesIO()
+    Image.new("RGB", (width, height), (120, 140, 160)).save(buf, format="JPEG")
+    return buf.getvalue()
+
+
+def _upload_real(client, name, width, height):
+    return client.post(
+        "/api/ingest",
+        data={"images": [(BytesIO(_jpeg_bytes(width, height)), name)]},
+        content_type="multipart/form-data",
+    )
+
+
 def _seed_bluesky_account():
     """Insert a Bluesky account (no image validation) and return its id."""
     conn = db.get_connection()
@@ -87,6 +106,120 @@ def test_upload_stages_items_and_fills_descriptions(tmp_path, monkeypatch):
     assert [i["captions"]["bluesky"] for i in listed] == ["a sunny trail"] * 2
     # The uploaded files landed in the images dir.
     assert len(list((tmp_path / "images").iterdir())) == 2
+
+
+def test_tall_image_flags_ig_crop_and_crop_creates_variant(tmp_path, monkeypatch):
+    _use_temp_db(tmp_path, monkeypatch)
+    client = _client()
+
+    # A 400x800 (0.5) photo is too tall for Instagram — flagged for cropping.
+    with patch.object(server.threading, "Thread", _NeverRunsThread):
+        res = _upload_real(client, "tall.jpg", 400, 800)
+    item = res.get_json()[0]
+    assert item["needs_ig_crop"] is True
+    assert item["ig_image_url"] is None
+
+    # Crop to a valid 4:5 (0.8) region — the middle 400x500 band.
+    res = client.post(
+        f"/api/ingest/{item['id']}/crop",
+        json={"x": 0, "y": 150, "width": 400, "height": 500},
+    )
+    assert res.status_code == 200
+    cropped = res.get_json()
+    assert cropped["needs_ig_crop"] is False
+    assert cropped["ig_image_url"] is not None
+    # The crop rect round-trips so re-opening the cropper can restore it.
+    assert cropped["ig_crop"] == {"x": 0, "y": 150, "width": 400, "height": 500}
+
+    # The variant is a real file with the requested dimensions.
+    from PIL import Image
+
+    ig_name = cropped["ig_image_url"].rsplit("/", 1)[-1]
+    with Image.open(tmp_path / "images" / ig_name) as im:
+        assert im.size == (400, 500)
+
+
+def test_crop_snaps_boundary_rounding_into_range(tmp_path, monkeypatch):
+    # A 4:5 crop can round a hair under 0.80 (e.g. 1004x1256 = 0.7994) and be
+    # rejected by Instagram's exact check — the server must snap it back inside.
+    _use_temp_db(tmp_path, monkeypatch)
+    client = _client()
+
+    with patch.object(server.threading, "Thread", _NeverRunsThread):
+        res = _upload_real(client, "p.jpg", 1004, 1256)
+    item = res.get_json()[0]
+    assert item["needs_ig_crop"] is True  # 0.7994 < 0.80
+
+    res = client.post(
+        f"/api/ingest/{item['id']}/crop",
+        json={"x": 0, "y": 0, "width": 1004, "height": 1256},
+    )
+    assert res.status_code == 200
+    ig_name = res.get_json()["ig_image_url"].rsplit("/", 1)[-1]
+
+    # The saved variant now passes Instagram's strict validation (no raise).
+    server.platforms.validate_instagram_image(str(tmp_path / "images" / ig_name))
+
+    from PIL import Image
+
+    with Image.open(tmp_path / "images" / ig_name) as im:
+        w, h = im.size
+    assert w / h >= 0.8
+
+
+def test_crop_rejects_out_of_range_aspect(tmp_path, monkeypatch):
+    _use_temp_db(tmp_path, monkeypatch)
+    client = _client()
+
+    with patch.object(server.threading, "Thread", _NeverRunsThread):
+        res = _upload_real(client, "tall.jpg", 400, 800)
+    item = res.get_json()[0]
+
+    # A 400x800 (0.5) crop is still outside Instagram's range — rejected.
+    res = client.post(
+        f"/api/ingest/{item['id']}/crop",
+        json={"x": 0, "y": 0, "width": 400, "height": 800},
+    )
+    assert res.status_code == 400
+    assert "Instagram" in res.get_json()["error"]
+
+
+def test_approve_carries_ig_crop_to_post(tmp_path, monkeypatch):
+    _use_temp_db(tmp_path, monkeypatch)
+    client = _client()
+    account_id = _seed_bluesky_account()
+
+    with patch.object(server.threading, "Thread", _NeverRunsThread):
+        res = _upload_real(client, "tall.jpg", 400, 800)
+    item = res.get_json()[0]
+    client.post(
+        f"/api/ingest/{item['id']}/crop",
+        json={"x": 0, "y": 150, "width": 400, "height": 500},
+    )
+
+    res = client.post(
+        "/api/ingest/approve",
+        json={
+            "account_ids": [account_id],
+            "items": [
+                {
+                    "id": item["id"],
+                    "scheduled_at": "2999-01-01T00:00:00Z",
+                    "captions": {"bluesky": "hi"},
+                }
+            ],
+        },
+    )
+    assert res.status_code == 201
+
+    conn = db.get_connection()
+    try:
+        row = conn.execute(
+            "SELECT ig_image_filename FROM posts ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+    finally:
+        conn.close()
+    assert row["ig_image_filename"] is not None
 
 
 def test_upload_rejects_unsupported_type_before_saving(tmp_path, monkeypatch):

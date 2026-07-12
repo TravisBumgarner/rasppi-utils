@@ -196,6 +196,22 @@ def init_db() -> None:
                 "DEFAULT '{}'"
             )
 
+        # Instagram-only cropped variant. Instagram enforces an aspect-ratio
+        # range Bluesky doesn't; when a photo is outside it the user crops a
+        # copy here, and Instagram publishes this file while Bluesky keeps the
+        # original framing. NULL means "no crop — use image_filename for both".
+        for table in ("ingest_items", "posts"):
+            if "ig_image_filename" not in _table_columns(conn, table):
+                conn.execute(
+                    f"ALTER TABLE {table} ADD COLUMN ig_image_filename TEXT"
+                )
+
+        # The crop rectangle (JSON {x, y, width, height} in the original's
+        # natural pixels) behind an item's Instagram crop, so re-opening the
+        # cropper can restore the previous framing instead of resetting.
+        if "ig_crop" not in _table_columns(conn, "ingest_items"):
+            conn.execute("ALTER TABLE ingest_items ADD COLUMN ig_crop TEXT")
+
         conn.commit()
     finally:
         conn.close()

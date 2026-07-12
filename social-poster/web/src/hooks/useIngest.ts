@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   approveIngest,
+  cropIngestImage,
   deleteIngestItem,
   getIngestItems,
   updateIngestItem,
@@ -9,6 +10,7 @@ import {
 import type {
   ApproveIngestInput,
   Captions,
+  CropRect,
   IngestItem,
   Post,
   TagPools,
@@ -47,6 +49,16 @@ export function useUpdateIngestItem() {
   >({
     mutationFn: ({ id, captions, tagPools }) =>
       updateIngestItem(id, captions, tagPools),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: INGEST_KEY });
+    },
+  });
+}
+
+export function useCropIngestImage() {
+  const queryClient = useQueryClient();
+  return useMutation<IngestItem, Error, { id: number; rect: CropRect }>({
+    mutationFn: ({ id, rect }) => cropIngestImage(id, rect),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: INGEST_KEY });
     },

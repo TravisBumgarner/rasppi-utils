@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAccounts } from '../hooks/useAccounts';
 import {
   useApproveIngest,
+  useCropIngestImage,
   useDeleteIngestItem,
   useIngestItems,
   useUpdateIngestItem,
@@ -11,6 +12,7 @@ import { usePosts } from '../hooks/usePosts';
 import { useSettings, useUpdateSettings } from '../hooks/useSettings';
 import { WeeklyScheduleModal } from './WeeklyScheduleModal';
 import { TagPillEditor } from './TagPillEditor';
+import { ImageCropModal } from './ImageCropModal';
 import {
   dateToDatetimeLocal,
   formatDateTime,
@@ -76,6 +78,7 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
   const upload = useUploadIngestImages();
   const updateItem = useUpdateIngestItem();
   const deleteItem = useDeleteIngestItem();
+  const cropImage = useCropIngestImage();
   const approve = useApproveIngest();
 
   // Schedule template — seeded from the saved setting once it loads, then
@@ -98,6 +101,10 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
 
   const [showSchedule, setShowSchedule] = useState(false);
   const [showIgPreview, setShowIgPreview] = useState(false);
+  // The item whose Instagram crop the user is editing (null = cropper closed).
+  const [cropItemId, setCropItemId] = useState<number | null>(null);
+  // The item whose framing preview is open in a centered modal (null = closed).
+  const [previewItemId, setPreviewItemId] = useState<number | null>(null);
 
   // Where slot-filling starts. 'now' = next free slot from now; 'afterLast' =
   // append strictly after the current queue's last post; 'custom' = a picked
@@ -284,6 +291,14 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
     [items.length, slots]
   );
 
+  const igSelected = selectedPlatforms.includes('instagram');
+  // Items that would fail Instagram's aspect rule until cropped. Only matters
+  // when an Instagram account is targeted.
+  const uncroppedItems = useMemo(
+    () => (igSelected ? items.filter((i) => i.needs_ig_crop) : []),
+    [igSelected, items]
+  );
+
   const anyPending = items.some((i) => i.tag_status === 'pending');
   const scheduleEmpty = effectiveSchedule.slots.length === 0;
   const scheduleByDay = useMemo(
@@ -295,6 +310,7 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
     selectedIds.length > 0 &&
     slots.length === items.length &&
     !anyPending &&
+    uncroppedItems.length === 0 &&
     !approve.isPending;
 
   const onApprove = () => {
@@ -543,7 +559,46 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
             )}
             {orderedItems.map((item, index) => (
               <div key={item.id} className="bulk-item">
-                <img className="bulk-item-thumb" src={item.image_url} alt="" />
+                <div className="bulk-item-aside">
+                  <img
+                    className="bulk-item-thumb"
+                    src={item.ig_image_url ?? item.image_url}
+                    alt=""
+                    role="button"
+                    tabIndex={0}
+                    title="Click to preview framing"
+                    onClick={() => setPreviewItemId(item.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        setPreviewItemId(item.id);
+                      }
+                    }}
+                  />
+                  {igSelected &&
+                    (item.needs_ig_crop ? (
+                      <button
+                        type="button"
+                        className="crop-warn"
+                        onClick={() => setCropItemId(item.id)}
+                      >
+                        <span className="crop-warn-title">
+                          ⚠ Crop for Instagram
+                        </span>
+                        <span className="crop-warn-sub">
+                          Too tall/wide — click to crop
+                        </span>
+                      </button>
+                    ) : item.ig_image_url ? (
+                      <button
+                        type="button"
+                        className="crop-done"
+                        onClick={() => setCropItemId(item.id)}
+                        title="Re-crop the Instagram image"
+                      >
+                        ✓ Cropped · re-crop
+                      </button>
+                    ) : null)}
+                </div>
                 <div className="bulk-item-main">
                   <div className="bulk-item-header">
                     <span className="bulk-item-slot">
@@ -651,6 +706,13 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
           {!approve.isError && anyPending && (
             <span className="muted">Waiting for captions to generate…</span>
           )}
+          {!approve.isError && !anyPending && uncroppedItems.length > 0 && (
+            <span className="state-error">
+              {uncroppedItems.length} photo
+              {uncroppedItems.length === 1 ? '' : 's'} need cropping for
+              Instagram before scheduling.
+            </span>
+          )}
         </div>
 
         <div className="modal-actions">
@@ -678,6 +740,81 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
         onClose={() => setShowSchedule(false)}
       />
     )}
+
+    {previewItemId !== null &&
+      (() => {
+        const previewItem = items.find((i) => i.id === previewItemId);
+        if (!previewItem) {
+          return null;
+        }
+        return (
+          <div
+            className="modal-backdrop"
+            onClick={() => setPreviewItemId(null)}
+            role="presentation"
+          >
+            <div
+              className="modal modal--thumb-preview"
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Framing preview"
+            >
+              <div className="modal-header">
+                <h2>
+                  {previewItem.ig_image_url
+                    ? 'Instagram crop'
+                    : 'Full frame — no crop'}
+                </h2>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => setPreviewItemId(null)}
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
+              <img
+                className="thumb-preview-img"
+                src={previewItem.ig_image_url ?? previewItem.image_url}
+                alt=""
+              />
+            </div>
+          </div>
+        );
+      })()}
+
+    {cropItemId !== null &&
+      (() => {
+        const cropItem = items.find((i) => i.id === cropItemId);
+        if (!cropItem) {
+          return null;
+        }
+        return (
+          <ImageCropModal
+            imageUrl={cropItem.image_url}
+            initialRect={cropItem.ig_crop}
+            saving={cropImage.isPending}
+            error={cropImage.error?.message ?? null}
+            onCancel={() => {
+              cropImage.reset();
+              setCropItemId(null);
+            }}
+            onCrop={(rect) =>
+              cropImage.mutate(
+                { id: cropItem.id, rect },
+                {
+                  onSuccess: () => {
+                    cropImage.reset();
+                    setCropItemId(null);
+                  },
+                }
+              )
+            }
+          />
+        );
+      })()}
 
     {showIgPreview && (
       <div
@@ -710,7 +847,7 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
           <div className="ig-grid">
             {[...orderedItems].reverse().map((item) => (
               <div key={item.id} className="ig-grid-cell">
-                <img src={item.image_url} alt="" />
+                <img src={item.ig_image_url ?? item.image_url} alt="" />
               </div>
             ))}
           </div>

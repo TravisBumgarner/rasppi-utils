@@ -5,6 +5,7 @@ import type {
   Captions,
   CreateAccountInput,
   CreatePostInput,
+  CropRect,
   EditPostInput,
   EngagementSnapshotResult,
   IngestItem,
@@ -177,6 +178,18 @@ export function updateIngestItem(
 
 export function deleteIngestItem(id: number): Promise<void> {
   return request<void>(`/ingest/${id}`, { method: 'DELETE' });
+}
+
+/** Make (or replace) an item's Instagram-cropped variant from a crop rect. */
+export function cropIngestImage(
+  id: number,
+  rect: CropRect
+): Promise<IngestItem> {
+  return request<IngestItem>(`/ingest/${id}/crop`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(rect),
+  });
 }
 
 /** Convert approved staged items into scheduled posts (all-or-nothing). */

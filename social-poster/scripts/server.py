@@ -578,12 +578,68 @@ def _save_uploaded_image(image) -> Tuple[Optional[str], Optional[Tuple]]:
     return filename, None
 
 
-def _delete_image_file(filename: str) -> None:
-    """Remove an uploaded image file, ignoring it if already gone."""
+def _delete_image_file(filename: Optional[str]) -> None:
+    """Remove an uploaded image file, ignoring it if already gone or unset."""
+    if not filename:
+        return
     try:
         (db.IMAGES_DIR / filename).unlink()
     except FileNotFoundError:
         pass
+
+
+def _crop_instagram_variant(source_filename: str, rect: Dict) -> Tuple[str, Dict]:
+    """Crop ``source_filename`` to ``rect`` and save a JPEG Instagram variant.
+
+    ``rect`` is ``{x, y, width, height}`` in the image's *display* pixels (the
+    same orientation the browser shows, i.e. after EXIF rotation). EXIF
+    orientation is baked in first so PIL's pixel grid matches what the user saw.
+
+    Instagram's aspect bounds are exact (0.80 / 1.91), and the 4:5 and 1.91:1
+    presets land right on them — so integer-pixel rounding can drift a hair
+    outside and Instagram silently rejects the upload. We snap the final pixel
+    box strictly inside the range before saving. Raises ``ValueError`` if the
+    rect is empty or grossly out of range. Returns ``(filename, final_rect)``,
+    where ``final_rect`` is the snapped integer rect (stored so re-opening the
+    cropper restores it exactly).
+    """
+    from PIL import Image, ImageOps
+
+    lo = platforms.INSTAGRAM_MIN_ASPECT
+    hi = platforms.INSTAGRAM_MAX_ASPECT
+
+    with Image.open(str(db.IMAGES_DIR / source_filename)) as im:
+        im = ImageOps.exif_transpose(im)
+        img_w, img_h = im.size
+        left = max(0, min(round(rect["x"]), img_w))
+        top = max(0, min(round(rect["y"]), img_h))
+        right = max(0, min(round(rect["x"] + rect["width"]), img_w))
+        bottom = max(0, min(round(rect["y"] + rect["height"]), img_h))
+        w = right - left
+        h = bottom - top
+        if w < 1 or h < 1:
+            raise ValueError("Crop area is empty.")
+        aspect = w / h
+        # A little slack for boundary rounding; reject only genuinely-wrong rects.
+        if aspect < lo - 0.05 or aspect > hi + 0.05:
+            raise ValueError(
+                f"Cropped aspect ratio ({aspect:.2f}) is outside Instagram's "
+                "0.80–1.91 range."
+            )
+        # Snap boundary drift back strictly inside by trimming the long side.
+        if aspect < lo:
+            h = int(w / lo)
+            bottom = top + h
+        elif aspect > hi:
+            w = int(h * hi)
+            right = left + w
+        cropped = im.crop((left, top, right, bottom)).convert("RGB")
+
+    stem = Path(source_filename).stem
+    filename = f"{uuid.uuid4().hex}_{stem}_ig.jpg"
+    cropped.save(str(db.IMAGES_DIR / filename), format="JPEG", quality=92)
+    final_rect = {"x": left, "y": top, "width": right - left, "height": bottom - top}
+    return filename, final_rect
 
 
 def _check_instagram_image(filename: str, platforms_in_use) -> Optional[Tuple]:
@@ -904,18 +960,22 @@ def delete_target(target_id: int):
             "SELECT COUNT(*) AS c FROM post_targets WHERE post_id = ?", (post_id,)
         ).fetchone()["c"]
         image_filename = None
+        ig_image_filename = None
         if remaining == 0:
             prow = conn.execute(
-                "SELECT image_filename FROM posts WHERE id = ?", (post_id,)
+                "SELECT image_filename, ig_image_filename FROM posts WHERE id = ?",
+                (post_id,),
             ).fetchone()
-            image_filename = prow["image_filename"] if prow else None
+            if prow:
+                image_filename = prow["image_filename"]
+                ig_image_filename = prow["ig_image_filename"]
             conn.execute("DELETE FROM posts WHERE id = ?", (post_id,))
         conn.commit()
     finally:
         conn.close()
 
-    if image_filename:
-        _delete_image_file(image_filename)
+    _delete_image_file(image_filename)
+    _delete_image_file(ig_image_filename)
     return ("", 204)
 
 
@@ -983,14 +1043,16 @@ def snapshot_all_engagement():
 
 @app.route("/api/posts/<int:post_id>", methods=["DELETE"])
 def delete_post(post_id: int):
-    """Delete a post, its image file, and (via cascade) its targets."""
+    """Delete a post, its image file(s), and (via cascade) its targets."""
     conn = db.get_connection()
     try:
         row = conn.execute(
-            "SELECT image_filename FROM posts WHERE id = ?", (post_id,)
+            "SELECT image_filename, ig_image_filename FROM posts WHERE id = ?",
+            (post_id,),
         ).fetchone()
         if row is not None:
             _delete_image_file(row["image_filename"])
+            _delete_image_file(row["ig_image_filename"])
             conn.execute("DELETE FROM posts WHERE id = ?", (post_id,))
             conn.commit()
         return ("", 204)
@@ -1006,6 +1068,26 @@ def delete_post(post_id: int):
 # the user reviews/edits the descriptions in the UI, and approving converts
 # the items into real scheduled posts (one per photo).
 # ---------------------------------------------------------------------------
+def _ig_aspect_ok(filename: str) -> bool:
+    """Whether an image's aspect ratio already satisfies Instagram's range.
+
+    Reads only the header (no full decode), so it's cheap to call per item.
+    A missing/unreadable file is treated as "ok" — the real validation on
+    approve/publish will surface any genuine problem.
+    """
+    from PIL import Image
+
+    try:
+        with Image.open(str(db.IMAGES_DIR / filename)) as im:
+            width, height = im.size
+    except Exception:  # noqa: BLE001 - missing/corrupt file, don't flag a crop
+        return True
+    if not height:
+        return True
+    aspect = width / height
+    return platforms.INSTAGRAM_MIN_ASPECT <= aspect <= platforms.INSTAGRAM_MAX_ASPECT
+
+
 def serialize_ingest_item(row) -> Dict:
     """Serialize an ingest_items row into its API shape."""
     try:
@@ -1016,9 +1098,24 @@ def serialize_ingest_item(row) -> Dict:
         tag_pools = json.loads(row["tag_pools"])
     except (json.JSONDecodeError, TypeError, IndexError):
         tag_pools = {}
+    ig_filename = row["ig_image_filename"]
+    try:
+        ig_crop = json.loads(row["ig_crop"]) if row["ig_crop"] else None
+    except (json.JSONDecodeError, TypeError):
+        ig_crop = None
     return {
         "id": row["id"],
         "image_url": "/api/images/" + row["image_filename"],
+        # The Instagram-cropped variant, if the user made one; Instagram posts
+        # this while Bluesky keeps the original framing.
+        "ig_image_url": ("/api/images/" + ig_filename) if ig_filename else None,
+        # The crop rectangle behind that variant (original natural pixels), so
+        # re-opening the cropper restores the previous framing.
+        "ig_crop": ig_crop,
+        # True when the original is outside Instagram's aspect range and hasn't
+        # been cropped yet — the UI shows a "crop required" warning for it.
+        "needs_ig_crop": ig_filename is None
+        and not _ig_aspect_ok(row["image_filename"]),
         "captions": captions,
         "tag_pools": tag_pools,
         "tag_status": row["tag_status"],
@@ -1182,16 +1279,62 @@ def update_ingest_item(item_id: int):
         conn.close()
 
 
-@app.route("/api/ingest/<int:item_id>", methods=["DELETE"])
-def delete_ingest_item(item_id: int):
-    """Discard a staged item and its uploaded image file."""
+@app.route("/api/ingest/<int:item_id>/crop", methods=["POST"])
+def crop_ingest_item(item_id: int):
+    """Make (or replace) an item's Instagram-cropped image variant.
+
+    Body: ``{"x", "y", "width", "height"}`` — the crop rectangle in the
+    image's display pixels. The original is left untouched (Bluesky keeps it);
+    only Instagram publishes the crop. Rejects a rect whose aspect ratio falls
+    outside Instagram's range. Returns the updated item.
+    """
+    body = request.get_json(silent=True) or {}
+    try:
+        rect = {k: float(body[k]) for k in ("x", "y", "width", "height")}
+    except (KeyError, TypeError, ValueError):
+        return jsonify({"error": "x, y, width and height are required"}), 400
+
     conn = db.get_connection()
     try:
         row = conn.execute(
-            "SELECT image_filename FROM ingest_items WHERE id = ?", (item_id,)
+            "SELECT * FROM ingest_items WHERE id = ?", (item_id,)
+        ).fetchone()
+        if row is None:
+            return jsonify({"error": "ingest item not found"}), 404
+        try:
+            new_filename, final_rect = _crop_instagram_variant(
+                row["image_filename"], rect
+            )
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        _delete_image_file(row["ig_image_filename"])  # replace any prior crop
+        conn.execute(
+            "UPDATE ingest_items SET ig_image_filename = ?, ig_crop = ? "
+            "WHERE id = ?",
+            (new_filename, json.dumps(final_rect), item_id),
+        )
+        conn.commit()
+        row = conn.execute(
+            "SELECT * FROM ingest_items WHERE id = ?", (item_id,)
+        ).fetchone()
+        return jsonify(serialize_ingest_item(row)), 200
+    finally:
+        conn.close()
+
+
+@app.route("/api/ingest/<int:item_id>", methods=["DELETE"])
+def delete_ingest_item(item_id: int):
+    """Discard a staged item and its uploaded image file(s)."""
+    conn = db.get_connection()
+    try:
+        row = conn.execute(
+            "SELECT image_filename, ig_image_filename FROM ingest_items "
+            "WHERE id = ?",
+            (item_id,),
         ).fetchone()
         if row is not None:
             _delete_image_file(row["image_filename"])
+            _delete_image_file(row["ig_image_filename"])
             conn.execute("DELETE FROM ingest_items WHERE id = ?", (item_id,))
             conn.commit()
         return ("", 204)
@@ -1250,8 +1393,11 @@ def approve_ingest_items():
         # all-or-nothing and a bad image names its file in the error.
         for item_id in item_ids:
             row = rows_by_id[item_id]
+            # Instagram publishes the cropped variant when one exists, so
+            # validate that; Bluesky is unaffected either way.
             img_check = _check_instagram_image(
-                row["image_filename"], platforms_by_id.values()
+                row["ig_image_filename"] or row["image_filename"],
+                platforms_by_id.values(),
             )
             if img_check is not None:
                 response, status = img_check
@@ -1267,9 +1413,14 @@ def approve_ingest_items():
             if not isinstance(captions, dict):
                 captions = {}
             cur = conn.execute(
-                "INSERT INTO posts (image_filename, caption, scheduled_at, created_at) "
-                "VALUES (?, '', ?, ?)",
-                (row["image_filename"], str(item["scheduled_at"]), now),
+                "INSERT INTO posts (image_filename, ig_image_filename, caption, "
+                "scheduled_at, created_at) VALUES (?, ?, '', ?, ?)",
+                (
+                    row["image_filename"],
+                    row["ig_image_filename"],
+                    str(item["scheduled_at"]),
+                    now,
+                ),
             )
             post_id = cur.lastrowid
             for account_id in account_ids:
