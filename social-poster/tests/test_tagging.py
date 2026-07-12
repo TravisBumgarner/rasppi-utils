@@ -60,11 +60,11 @@ def test_extract_captions_end_to_end(tmp_path):
     assert "Fog at sunrise." in instagram
     assert "The Gear - Nikon Z5, NIKKOR Z 35mm f/1.8 S" in instagram
     assert "The Setup - 1/200s, ƒ/2.8, 35mm focal length" in instagram
-    assert "#nikonz5" in instagram and "#nikon" in instagram
+    # NikonZ5 is a hub bucket (general removed), so IG posts its priority hubs.
+    assert "#NikonNoFilter" in instagram and "@nikonusa" in instagram
 
     bluesky = captions["bluesky"]
-    assert "#nikon" in bluesky
-    assert "#nikonz5" not in bluesky  # bluesky uses its own tag set
+    assert "#nikon" in bluesky  # bluesky uses its own tag set
 
 
 def test_unknown_hierarchy_tag_raises(tmp_path):
@@ -359,8 +359,30 @@ def test_instagram_hashtags_hard_capped_priority_first_mentions_uncounted(
     hashtags = [t for t in tags if t.startswith("#")]
     # Hard-capped at 5, priority order preserved; #hub5 and both #extra dropped.
     assert hashtags == [f"#hub{i}" for i in range(5)]
-    assert "@bighub" in tags  # priority mention kept
-    assert "@generalmention" in tags  # general mention kept, uncounted
+    assert "@bighub" in tags  # priority mention kept (under the 3-mention cap)
+
+
+def test_instagram_mentions_capped_priority_first(tmp_path, monkeypatch):
+    # 5 priority @mentions exceed the 3-mention cap: only the first 3 survive.
+    tree = {
+        "Special": {
+            "Mentions": {
+                "general": ["@genA", "@genB"],
+                "priority": [f"@hub{i}" for i in range(5)],
+                "bluesky": [],
+            }
+        }
+    }
+    tags_path = tmp_path / "tags.json"
+    tags_path.write_text(json.dumps(tree))
+    monkeypatch.setattr(tagging, "TAGS_PATH", tags_path)
+
+    photo = tmp_path / "photo.jpg"
+    _write_photo(photo, ["cameracoffeewander|Special|Mentions"])
+
+    tag_line = tagging.extract_captions(str(photo))["instagram"].splitlines()[-1]
+    mentions = [t for t in tag_line.split(" ") if t.startswith("@")]
+    assert mentions == [f"@hub{i}" for i in range(3)]  # first 3, general dropped
 
 
 def test_extract_tag_pools_structure_and_star_flags(tmp_path, monkeypatch):

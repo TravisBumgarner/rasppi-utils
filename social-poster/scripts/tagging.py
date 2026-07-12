@@ -17,11 +17,10 @@ info. This module turns that into ready-to-review captions:
    focal length), with the same per-camera label overrides as the old tool.
    Film posts use the analog convention instead: one ``📷 <camera> /
    🎞️ <film stock>`` line (Bluesky keyword feeds match on it).
-4. Render the caption template per platform. Instagram is hard-capped at 5
-   hashtags total (2026 guidance deprioritizes posts with more): priority
-   hashtags fill the budget first (feature hubs), then a random draw from the
-   general tags tops it up so the mix varies across posts. @mentions don't
-   count toward the cap and are always kept. Bluesky gets its own tag set,
+4. Render the caption template per platform. Instagram is capped at 5 hashtags
+   and 3 @mentions (2026 guidance deprioritizes posts with more), priority
+   hubs first, then a random draw from the general tags tops up the hashtag
+   budget so the mix varies across posts. Bluesky gets its own tag set,
    trimmed from the end so the caption fits the 300-character post limit.
 
 Bulk ingestion calls ``extract_captions`` once per uploaded image in a
@@ -47,9 +46,11 @@ TAGS_PATH = Path(__file__).parent.parent / "config" / "tags.json"
 # gallery organization) are ignored.
 TAG_ROOT = "cameracoffeewander"
 
-# Instagram deprioritizes posts with more than ~5 hashtags; @mentions don't
-# count toward that. Priority items (feature hubs) are never dropped.
+# Instagram deprioritizes posts with more than ~5 hashtags. Hashtags and
+# @mentions are capped independently (mentions don't count toward the hashtag
+# penalty, but a wall of @mentions still reads as spam), priority hubs first.
 INSTAGRAM_HASHTAG_LIMIT = 5
+INSTAGRAM_MENTION_LIMIT = 3
 
 # Bluesky rejects posts over 300 characters (graphemes; len() is close enough
 # for our ASCII tags). Tags are dropped from the end until the caption fits.
@@ -332,22 +333,25 @@ def _generate_social_tags(keywords: List[str]) -> Dict[str, List[str]]:
     general = lists["general"]
     bluesky = lists["bluesky"]
 
-    # Instagram deprioritizes posts with more than ~5 hashtags, so hashtags are
-    # hard-capped at INSTAGRAM_HASHTAG_LIMIT: priority hashtags fill the budget
-    # first (feature hubs matter most), then a random draw from the general tags
-    # tops it up so the mix varies post to post. @mentions don't count toward
-    # the cap and are always kept.
+    # Hashtags and @mentions are each hard-capped (5 and 3), priority hubs
+    # first; the leftover hashtag budget is topped up from a random draw of the
+    # general tags so the mix varies post to post.
     instagram: List[str] = []
     hashtags = 0
+    mentions = 0
 
     def _add(tag: str) -> None:
-        nonlocal hashtags
+        nonlocal hashtags, mentions
         if tag in instagram:
             return
         if tag.startswith("#"):
             if hashtags >= INSTAGRAM_HASHTAG_LIMIT:
                 return
             hashtags += 1
+        elif tag.startswith("@"):
+            if mentions >= INSTAGRAM_MENTION_LIMIT:
+                return
+            mentions += 1
         instagram.append(tag)
 
     for tag in priority:
