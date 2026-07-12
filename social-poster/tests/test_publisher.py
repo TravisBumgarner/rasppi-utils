@@ -96,6 +96,25 @@ def test_publish_post_records_failure(tmp_path, monkeypatch):
     assert log["status"] == "failed"
 
 
+def test_instagram_posts_cropped_variant_when_present(tmp_path, monkeypatch):
+    # An Instagram target with a crop must publish the cropped file, not the
+    # original (Bluesky, if present, would still use the original).
+    _use_temp_db(tmp_path, monkeypatch)
+    post_id = _seed_post()
+    conn = db.get_connection()
+    conn.execute(
+        "UPDATE posts SET ig_image_filename = 'img_ig.jpg' WHERE id = ?", (post_id,)
+    )
+    conn.commit()
+    conn.close()
+
+    with patch.object(platforms, "post", return_value="media-1") as post:
+        publisher.publish_post(post_id)
+
+    # post(platform, creds, image_path, caption) — image_path is the crop.
+    assert post.call_args.args[2].endswith("img_ig.jpg")
+
+
 def test_publish_post_skips_already_posted(tmp_path, monkeypatch):
     _use_temp_db(tmp_path, monkeypatch)
     post_id = _seed_post()

@@ -22,6 +22,7 @@ _TARGET_SELECT = """
     SELECT pt.id AS target_id,
            pt.post_id AS post_id,
            p.image_filename AS image_filename,
+           p.ig_image_filename AS ig_image_filename,
            pt.caption AS caption,
            a.platform AS platform,
            a.username AS username,
@@ -104,7 +105,13 @@ def _publish_rows(rows) -> None:
     for row in rows:
         target_id = row["target_id"]
         platform = row["platform"]
-        image_path = str(db.IMAGES_DIR / row["image_filename"])
+        # Instagram enforces an aspect range Bluesky doesn't, so it posts the
+        # cropped variant when the user made one; every other platform (and an
+        # uncropped Instagram post) uses the original.
+        filename = row["image_filename"]
+        if platform == "instagram" and row["ig_image_filename"]:
+            filename = row["ig_image_filename"]
+        image_path = str(db.IMAGES_DIR / filename)
 
         try:
             creds = json.loads(row["credentials"])
