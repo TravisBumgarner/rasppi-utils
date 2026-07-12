@@ -1427,6 +1427,44 @@ textarea {
 .bulk-review-toolbar {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Instagram profile-grid preview: 3 columns of squares. */
+.modal--ig-preview {
+  display: flex;
+  flex-direction: column;
+  max-width: 460px;
+  max-height: 92vh;
+}
+
+.ig-preview-hint {
+  padding: 0 20px;
+}
+
+.ig-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  /* flex child of the capped-height modal → this is the scroll region. */
+  flex: 1;
+  min-height: 0;
+  align-content: start;
+  overflow-y: auto;
+  padding: 0 20px 20px;
+}
+
+.ig-grid-cell {
+  aspect-ratio: 1 / 1;
+  background: var(--bg-elev-2);
+  overflow: hidden;
+}
+
+.ig-grid-cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .bulk-item {

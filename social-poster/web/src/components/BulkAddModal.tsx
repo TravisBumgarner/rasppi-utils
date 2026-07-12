@@ -97,6 +97,7 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
   };
 
   const [showSchedule, setShowSchedule] = useState(false);
+  const [showIgPreview, setShowIgPreview] = useState(false);
 
   // Where slot-filling starts. 'now' = next free slot from now; 'afterLast' =
   // append strictly after the current queue's last post; 'custom' = a picked
@@ -486,15 +487,26 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
                   : 'Drop photos here, or click to browse'}
               </div>
             )}
-            {items.length > 1 && (
+            {items.length > 0 && (
               <div className="bulk-review-toolbar">
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={shuffleOrder}
-                >
-                  🔀 Shuffle order
-                </button>
+                {items.length > 1 && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={shuffleOrder}
+                  >
+                    🔀 Shuffle order
+                  </button>
+                )}
+                {selectedPlatforms.includes('instagram') && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => setShowIgPreview(true)}
+                  >
+                    📷 Instagram preview
+                  </button>
+                )}
               </div>
             )}
             {orderedItems.map((item, index) => (
@@ -633,6 +645,45 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
         onChange={saveSchedule}
         onClose={() => setShowSchedule(false)}
       />
+    )}
+
+    {showIgPreview && (
+      <div
+        className="modal-backdrop"
+        onClick={() => setShowIgPreview(false)}
+        role="presentation"
+      >
+        <div
+          className="modal modal--ig-preview"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Instagram grid preview"
+        >
+          <div className="modal-header">
+            <h2>Instagram preview</h2>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setShowIgPreview(false)}
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </div>
+          <p className="muted field-help ig-preview-hint">
+            How the batch lands on your profile grid — most recent (last
+            scheduled) first.
+          </p>
+          <div className="ig-grid">
+            {[...orderedItems].reverse().map((item) => (
+              <div key={item.id} className="ig-grid-cell">
+                <img src={item.image_url} alt="" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     )}
     </>
   );
