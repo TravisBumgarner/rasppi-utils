@@ -12,6 +12,7 @@ import type {
   Post,
   Settings,
   TagCheckResult,
+  TagPools,
   TaggingPreview,
   UpdatePostInput,
 } from './types';
@@ -162,12 +163,15 @@ export function uploadIngestImages(files: File[]): Promise<IngestItem[]> {
 
 export function updateIngestItem(
   id: number,
-  captions: Captions
+  captions: Captions,
+  tagPools?: TagPools
 ): Promise<IngestItem> {
   return request<IngestItem>(`/ingest/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ captions }),
+    body: JSON.stringify(
+      tagPools ? { captions, tag_pools: tagPools } : { captions }
+    ),
   });
 }
 

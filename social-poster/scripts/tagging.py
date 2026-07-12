@@ -453,20 +453,61 @@ def extract_captions(image_path: str) -> Dict[str, str]:
     }
 
 
-def unregistered_tags(image_path: str) -> List[str]:
-    """Return the ``cameracoffeewander|...`` keywords on a photo that the tag
-    tree can't resolve — the tags that still need registering in
-    ``config/tags.json`` (and, in Lightroom, the keywords the tree is missing).
+def extract_tag_pools(image_path: str) -> Dict[str, Dict]:
+    """Build the structured tag pools for the bulk-review pill editor.
 
-    A keyword is unregistered when its hierarchy path isn't in the tree, or the
-    path resolves but no node on it carries any priority/general tags (an empty
-    stub). Paths are returned without the ``cameracoffeewander|`` root prefix
-    (matching the tag-tree keys and the "Unknown hierarchy tag" message),
-    deduplicated, in first-seen order.
+    Returns per platform ``{"prefix": <caption minus the tag line>, "tags":
+    [{"text", "priority", "mention"}, ...]}``. The frontend renders the pool as
+    draggable pills and rebuilds the caption as ``prefix`` + the chosen tag
+    line, so the ordering/selection is the user's while the fixed part (title,
+    description, gear line) stays server-rendered.
+
+    Instagram's pool is priority hubs first (starred) then a shuffled draw of
+    the general tags — the shuffle gives each photo a varied but, once stored,
+    stable starting order. Bluesky has a single list (most-important-first, no
+    priority split). Raises the same ValueErrors as ``extract_captions``.
+    """
+    xmp = _read_xmp(image_path)
+    if xmp is None:
+        raise ValueError(
+            "No XMP metadata found — export from Lightroom with metadata included"
+        )
+
+    keywords = _xmp_list(xmp, "lr:hierarchicalSubject")
+    if not keywords:
+        raise ValueError("No Lightroom hierarchical keywords (lr:hierarchicalSubject)")
+
+    title = _xmp_text(xmp, "dc:title")
+    description = _xmp_text(xmp, "dc:description")
+    fields = _read_exif(image_path)
+    _apply_film_camera_tags(fields, keywords)
+
+    lists = _collect_tag_lists(keywords)
+    prefix = _render_caption(fields, title, description, [])
+
+    def _pill(text: str, priority: bool) -> Dict:
+        return {"text": text, "priority": priority, "mention": text.startswith("@")}
+
+    general_only = [t for t in lists["general"] if t not in lists["priority"]]
+    random.shuffle(general_only)
+    instagram_pool = [_pill(t, True) for t in lists["priority"]]
+    instagram_pool += [_pill(t, False) for t in general_only]
+    bluesky_pool = [_pill(t, False) for t in lists["bluesky"]]
+
+    return {
+        "instagram": {"prefix": prefix, "tags": instagram_pool},
+        "bluesky": {"prefix": prefix, "tags": bluesky_pool},
+    }
+
+
+def keyword_paths(image_path: str) -> List[List[str]]:
+    """Return each ``cameracoffeewander|...`` keyword on a photo as a list of
+    hierarchy parts (root prefix stripped), e.g.
+    ``["Place", "USA", "Alaska", "State"]``. Non-root keywords are skipped.
 
     Raises ValueError when the photo has no XMP or no hierarchical keywords —
     the same preconditions ``extract_captions`` needs — so the caller can tell
-    "nothing to register" apart from "no metadata to check".
+    "nothing to check" apart from "no metadata to check".
     """
     xmp = _read_xmp(image_path)
     if xmp is None:

@@ -1465,6 +1465,74 @@ textarea {
   font-weight: 600;
 }
 
+/* Editable caption prefix (title/description/gear) above the tag pills. */
+.bulk-prefix {
+  margin-bottom: 6px;
+}
+
+/* Draggable tag pills. Active = will post; muted = dropped (drag up to keep). */
+.pillrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  cursor: grab;
+  user-select: none;
+  white-space: nowrap;
+  transition:
+    background 0.12s,
+    color 0.12s,
+    opacity 0.12s;
+}
+
+.pill:active {
+  cursor: grabbing;
+}
+
+.pill--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.pill--muted {
+  background: var(--bg);
+  color: var(--muted);
+  opacity: 0.6;
+  filter: grayscale(1);
+}
+
+.pill--dragging {
+  opacity: 0.35;
+}
+
+/* Insertion target while dragging. */
+.pill--over {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.pill-icon {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.pill-icon:empty {
+  display: none;
+}
+
+.pill-empty {
+  font-size: 12px;
+}
+
 /* These sit outside a .form (which normally supplies the 20px padding). */
 .modal--bulk .form-error-slot,
 .modal--bulk .modal-actions {

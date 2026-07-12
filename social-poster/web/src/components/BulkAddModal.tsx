@@ -10,13 +10,22 @@ import {
 import { usePosts } from '../hooks/usePosts';
 import { useSettings, useUpdateSettings } from '../hooks/useSettings';
 import { WeeklyScheduleModal } from './WeeklyScheduleModal';
-import { formatDateTime, formatHHMM, toApiISO } from '../utils/datetime';
+import { TagPillEditor } from './TagPillEditor';
+import {
+  dateToDatetimeLocal,
+  formatDateTime,
+  formatHHMM,
+  toApiISO,
+} from '../utils/datetime';
 import { DAY_SHORT, generateSlots, timesByDay } from '../utils/schedule';
+import { captionFromPool } from '../utils/tags';
 import type {
   BulkSchedule,
   Captions,
   IngestItem,
   Platform,
+  TagPool,
+  TagPools,
 } from '../api/types';
 
 const PLATFORM_LABEL: Record<Platform, string> = {
@@ -130,27 +139,63 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
     return ALL_PLATFORMS.filter((p) => set.has(p));
   }, [selectedIds, accounts]);
 
-  // Caption edits keyed by `${itemId}:${platform}`; the server value is the
-  // fallback, so freshly-tagged captions appear until the user types.
+  // Free-text caption edits keyed by `${itemId}:${platform}` — the fallback for
+  // items/platforms that have no structured tag pool (e.g. tagging failed).
   const [edits, setEdits] = useState<Record<string, string>>({});
-  const captionValue = (item: IngestItem, platform: Platform) =>
-    edits[`${item.id}:${platform}`] ?? item.captions[platform] ?? '';
+  // Per-item tag pools the user has reordered / whose prefix they've edited;
+  // falls back to the server's pools until then.
+  const [poolEdits, setPoolEdits] = useState<Record<number, TagPools>>({});
 
-  const captionsFor = (item: IngestItem): Captions => {
+  const poolsForItem = (item: IngestItem): TagPools =>
+    poolEdits[item.id] ?? item.tag_pools ?? {};
+  const poolFor = (item: IngestItem, platform: Platform) =>
+    poolsForItem(item)[platform];
+
+  // A platform's caption comes from its pool (prefix + active tags) when one
+  // exists, else the free-text edit / server caption.
+  const captionValue = (item: IngestItem, platform: Platform) => {
+    const pool = poolFor(item, platform);
+    if (pool) {
+      return captionFromPool(platform, pool);
+    }
+    return edits[`${item.id}:${platform}`] ?? item.captions[platform] ?? '';
+  };
+
+  const captionsFrom = (item: IngestItem, pools: TagPools): Captions => {
     const captions: Captions = {};
     for (const platform of selectedPlatforms) {
-      captions[platform] = captionValue(item, platform);
+      const pool = pools[platform];
+      captions[platform] = pool
+        ? captionFromPool(platform, pool)
+        : edits[`${item.id}:${platform}`] ?? item.captions[platform] ?? '';
     }
     return captions;
   };
 
-  // Persist an edited caption when the user leaves the field, so a closed
-  // modal doesn't lose review work (items live server-side).
-  const persistCaption = (item: IngestItem) => {
+  const captionsFor = (item: IngestItem): Captions =>
+    captionsFrom(item, poolsForItem(item));
+
+  // Persist the current captions (+ pools) so a closed modal keeps review work.
+  const commit = (item: IngestItem, pools: TagPools) => {
     updateItem.mutate({
       id: item.id,
-      captions: { ...item.captions, ...captionsFor(item) },
+      captions: { ...item.captions, ...captionsFrom(item, pools) },
+      tagPools: { ...item.tag_pools, ...pools },
     });
+  };
+  const persistCaption = (item: IngestItem) => commit(item, poolsForItem(item));
+
+  // Prefix keystrokes update local state only (persist on blur); a pill reorder
+  // is a discrete action, so it updates state and persists immediately.
+  const setPoolLocal = (item: IngestItem, platform: Platform, next: TagPool) =>
+    setPoolEdits((prev) => ({
+      ...prev,
+      [item.id]: { ...poolsForItem(item), [platform]: next },
+    }));
+  const reorderPool = (item: IngestItem, platform: Platform, next: TagPool) => {
+    const pools = { ...poolsForItem(item), [platform]: next };
+    setPoolEdits((prev) => ({ ...prev, [item.id]: pools }));
+    commit(item, pools);
   };
 
   const fileInput = useRef<HTMLInputElement>(null);
@@ -473,24 +518,54 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
                     </span>
                   )}
                   {item.tag_status !== 'pending' &&
-                    selectedPlatforms.map((platform) => (
-                      <label key={platform} className="field">
-                        <span className="field-label">
-                          {PLATFORM_LABEL[platform]} caption
-                        </span>
-                        <textarea
-                          rows={6}
-                          value={captionValue(item, platform)}
-                          onChange={(e) =>
-                            setEdits((prev) => ({
-                              ...prev,
-                              [`${item.id}:${platform}`]: e.target.value,
-                            }))
-                          }
-                          onBlur={() => persistCaption(item)}
-                        />
-                      </label>
-                    ))}
+                    selectedPlatforms.map((platform) => {
+                      const pool = poolFor(item, platform);
+                      return (
+                        <div key={platform} className="field">
+                          <span className="field-label">
+                            {PLATFORM_LABEL[platform]} caption
+                          </span>
+                          {pool ? (
+                            <>
+                              <textarea
+                                className="bulk-prefix"
+                                rows={3}
+                                value={pool.prefix}
+                                onChange={(e) =>
+                                  setPoolLocal(item, platform, {
+                                    ...pool,
+                                    prefix: e.target.value,
+                                  })
+                                }
+                                onBlur={() => persistCaption(item)}
+                              />
+                              <TagPillEditor
+                                platform={platform}
+                                pool={pool}
+                                onReorder={(tags) =>
+                                  reorderPool(item, platform, {
+                                    ...pool,
+                                    tags,
+                                  })
+                                }
+                              />
+                            </>
+                          ) : (
+                            <textarea
+                              rows={6}
+                              value={captionValue(item, platform)}
+                              onChange={(e) =>
+                                setEdits((prev) => ({
+                                  ...prev,
+                                  [`${item.id}:${platform}`]: e.target.value,
+                                }))
+                              }
+                              onBlur={() => persistCaption(item)}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
             ))}

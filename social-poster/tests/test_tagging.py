@@ -363,6 +363,49 @@ def test_instagram_hashtags_hard_capped_priority_first_mentions_uncounted(
     assert "@generalmention" in tags  # general mention kept, uncounted
 
 
+def test_extract_tag_pools_structure_and_star_flags(tmp_path, monkeypatch):
+    tree = {
+        "Special": {
+            "Hubs": {
+                "general": ["#g1", "#g2", "@genmention"],
+                "priority": ["#MadeWithKodak", "@kodakprofessional"],
+                "bluesky": ["#kodak", "#filmphotography"],
+            }
+        }
+    }
+    tags_path = tmp_path / "tags.json"
+    tags_path.write_text(json.dumps(tree))
+    monkeypatch.setattr(tagging, "TAGS_PATH", tags_path)
+
+    photo = tmp_path / "photo.jpg"
+    _write_photo(photo, ["cameracoffeewander|Special|Hubs"], with_exif=False)
+
+    pools = tagging.extract_tag_pools(str(photo))
+
+    # Prefix is the caption minus the tag line (no hashtags in it).
+    assert "#" not in pools["instagram"]["prefix"]
+    assert "@" not in pools["instagram"]["prefix"]
+
+    ig = pools["instagram"]["tags"]
+    priority = [t for t in ig if t["priority"]]
+    general = [t for t in ig if not t["priority"]]
+    # Priority hubs come first and are starred; general follows.
+    assert ig[: len(priority)] == priority
+    assert {t["text"] for t in priority} == {"#MadeWithKodak", "@kodakprofessional"}
+    assert {t["text"] for t in general} == {"#g1", "#g2", "@genmention"}
+    # Mention flag is set for @-tags regardless of tier.
+    assert next(t for t in ig if t["text"] == "@kodakprofessional")["mention"]
+    assert next(t for t in ig if t["text"] == "@genmention")["mention"]
+    assert not next(t for t in ig if t["text"] == "#g1")["mention"]
+
+    # Bluesky pool is the single list, order preserved, no priority split.
+    assert [t["text"] for t in pools["bluesky"]["tags"]] == [
+        "#kodak",
+        "#filmphotography",
+    ]
+    assert all(not t["priority"] for t in pools["bluesky"]["tags"])
+
+
 def test_bluesky_caption_fits_300_chars(tmp_path, monkeypatch):
     tree = {
         "Special": {
