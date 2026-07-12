@@ -1290,6 +1290,53 @@ def tagging_preview():
     return jsonify({"captions": captions, "error": None}), 200
 
 
+@app.route("/api/tagging/check", methods=["POST"])
+def tagging_check():
+    """Report which Lightroom keywords on a batch of photos aren't registered.
+
+    Field: images (one or more files). For each photo, list the
+    ``cameracoffeewander|...`` hierarchy tags the tag tree can't resolve — the
+    tags that still need adding to ``config/tags.json``. Nothing is staged or
+    saved; photos are inspected in temp files and discarded.
+
+    Returns ``{"files": [{"filename", "unregistered": [...], "error"}],
+    "unregistered": [...]}`` — the top-level list is the deduplicated union
+    across every photo (first-seen order), the ready-to-register worklist.
+    Photos missing usable metadata carry an ``error`` and an empty list; that's
+    a normal per-photo outcome, so the request still succeeds (200).
+    """
+    images = [f for f in request.files.getlist("images") if f and f.filename]
+    if not images:
+        return jsonify({"error": "at least one image file is required"}), 400
+    bad = [
+        f.filename
+        for f in images
+        if Path(f.filename).suffix.lower() not in ALLOWED_IMAGE_EXTENSIONS
+    ]
+    if bad:
+        return jsonify({"error": f"unsupported image type(s): {bad}"}), 400
+
+    files: List[Dict] = []
+    aggregate: List[str] = []
+    for image in images:
+        ext = Path(image.filename).suffix.lower()
+        with tempfile.NamedTemporaryFile(suffix=ext) as tmp:
+            image.save(tmp.name)
+            try:
+                missing = tagging.unregistered_tags(tmp.name)
+                error = None
+            except Exception as exc:  # noqa: BLE001 - missing metadata is expected.
+                missing, error = [], str(exc)
+        files.append(
+            {"filename": image.filename, "unregistered": missing, "error": error}
+        )
+        for tag in missing:
+            if tag not in aggregate:
+                aggregate.append(tag)
+
+    return jsonify({"files": files, "unregistered": aggregate}), 200
+
+
 @app.route("/api/images/<path:filename>", methods=["GET"])
 def serve_image(filename: str):
     """Serve an uploaded image, guarding against path traversal."""

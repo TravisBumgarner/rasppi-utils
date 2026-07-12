@@ -91,6 +91,49 @@ def test_photo_without_keywords_raises(tmp_path):
         tagging.extract_captions(str(photo))
 
 
+def test_unregistered_tags_lists_only_unknown_keywords(tmp_path):
+    photo = tmp_path / "photo.jpg"
+    _write_photo(
+        photo,
+        [
+            "cameracoffeewander|Camera|NikonZ5",  # registered
+            "cameracoffeewander|Place|USA|Atlantis|State",  # not in the tree
+            "gallery|ignored",  # non-root keyword, always skipped
+        ],
+    )
+
+    assert tagging.unregistered_tags(str(photo)) == ["Place|USA|Atlantis|State"]
+
+
+def test_unregistered_tags_flags_empty_stub_nodes(tmp_path, monkeypatch):
+    # A hierarchy that exists in the tree but carries no tags/accounts is still
+    # unregistered — nothing to post, so it needs filling in.
+    tree = {"Place": {"USA": {"Nowhere": {"general": [], "priority": []}}}}
+    tags_path = tmp_path / "tags.json"
+    tags_path.write_text(json.dumps(tree))
+    monkeypatch.setattr(tagging, "TAGS_PATH", tags_path)
+
+    photo = tmp_path / "photo.jpg"
+    _write_photo(photo, ["cameracoffeewander|Place|USA|Nowhere"], with_exif=False)
+
+    assert tagging.unregistered_tags(str(photo)) == ["Place|USA|Nowhere"]
+
+
+def test_unregistered_tags_empty_when_all_registered(tmp_path):
+    photo = tmp_path / "photo.jpg"
+    _write_photo(photo, ["cameracoffeewander|Camera|NikonZ5"])
+
+    assert tagging.unregistered_tags(str(photo)) == []
+
+
+def test_unregistered_tags_requires_metadata(tmp_path):
+    photo = tmp_path / "photo.jpg"
+    Image.new("RGB", (8, 8), "gray").save(photo)
+
+    with pytest.raises(ValueError, match="No XMP metadata"):
+        tagging.unregistered_tags(str(photo))
+
+
 def test_film_camera_keyword_overrides_scanner_exif(tmp_path, monkeypatch):
     # A film scan: no useful EXIF, camera named by keyword instead.
     tree = {

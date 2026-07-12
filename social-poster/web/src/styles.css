@@ -1449,3 +1449,43 @@ textarea {
     overflow: visible;
   }
 }
+
+/* Tag Checker — single-column review pane (no left config column). */
+.modal--bulk > .bulk-review {
+  flex: 1;
+  padding: 16px 20px 0;
+}
+
+.tagcheck-summary {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  background: var(--bg-elev-2);
+}
+
+.tagcheck-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tagcheck-list code {
+  font-size: 13px;
+}
+
+.tagcheck-file {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+  font-size: 13px;
+}
+
+.tagcheck-file-name {
+  font-weight: 600;
+  word-break: break-all;
+}

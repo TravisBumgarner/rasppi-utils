@@ -11,6 +11,7 @@ import type {
   LogEntry,
   Post,
   Settings,
+  TagCheckResult,
   TaggingPreview,
   UpdatePostInput,
 } from './types';
@@ -188,6 +189,19 @@ export function generateCaptions(image: File): Promise<TaggingPreview> {
   const form = new FormData();
   form.append('image', image);
   return request<TaggingPreview>('/tagging/preview', {
+    method: 'POST',
+    body: form,
+  });
+}
+
+/** Check a batch of photos for Lightroom keywords not yet registered in the
+ * tag tree (no staging). */
+export function checkTags(files: File[]): Promise<TagCheckResult> {
+  const form = new FormData();
+  for (const file of files) {
+    form.append('images', file);
+  }
+  return request<TagCheckResult>('/tagging/check', {
     method: 'POST',
     body: form,
   });

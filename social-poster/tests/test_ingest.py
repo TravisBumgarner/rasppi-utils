@@ -325,3 +325,68 @@ def test_bulk_schedule_migrates_old_days_times_shape(tmp_path, monkeypatch):
     assert schedule == {
         "slots": [{"day": 1, "time": "01:00"}, {"day": 5, "time": "01:00"}]
     }
+
+
+# --- Tag checker (POST /api/tagging/check) ----------------------------------
+
+
+def _check(client, filenames):
+    return client.post(
+        "/api/tagging/check",
+        data={"images": [(BytesIO(b"fake image bytes"), name) for name in filenames]},
+        content_type="multipart/form-data",
+    )
+
+
+def test_tag_check_aggregates_unregistered_tags(tmp_path, monkeypatch):
+    _use_temp_db(tmp_path, monkeypatch)
+    client = _client()
+
+    # Two photos share an unregistered tag; the aggregate lists it once.
+    with patch.object(
+        tagging,
+        "unregistered_tags",
+        side_effect=[
+            ["Place|USA|Alaska|State"],
+            ["Place|USA|Alaska|State", "NationalPark|Denali"],
+        ],
+    ):
+        res = _check(client, ["a.jpg", "b.jpg"])
+
+    assert res.status_code == 200
+    body = res.get_json()
+    assert body["unregistered"] == ["Place|USA|Alaska|State", "NationalPark|Denali"]
+    assert [f["filename"] for f in body["files"]] == ["a.jpg", "b.jpg"]
+    assert body["files"][1]["unregistered"] == [
+        "Place|USA|Alaska|State",
+        "NationalPark|Denali",
+    ]
+    # Nothing was staged — the checker is read-only.
+    assert client.get("/api/ingest").get_json() == []
+
+
+def test_tag_check_reports_per_photo_metadata_errors(tmp_path, monkeypatch):
+    _use_temp_db(tmp_path, monkeypatch)
+    client = _client()
+
+    with patch.object(
+        tagging,
+        "unregistered_tags",
+        side_effect=[ValueError("No XMP metadata found"), []],
+    ):
+        res = _check(client, ["no-xmp.jpg", "clean.jpg"])
+
+    assert res.status_code == 200
+    body = res.get_json()
+    assert body["files"][0]["error"] == "No XMP metadata found"
+    assert body["files"][0]["unregistered"] == []
+    assert body["files"][1]["error"] is None
+    # A photo that errors contributes nothing to the worklist.
+    assert body["unregistered"] == []
+
+
+def test_tag_check_rejects_unsupported_type(tmp_path, monkeypatch):
+    _use_temp_db(tmp_path, monkeypatch)
+    res = _check(_client(), ["a.jpg", "notes.txt"])
+    assert res.status_code == 400
+    assert "notes.txt" in res.get_json()["error"]

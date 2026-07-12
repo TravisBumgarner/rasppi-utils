@@ -419,3 +419,43 @@ def extract_captions(image_path: str) -> Dict[str, str]:
         "bluesky": _render_bluesky_caption(fields, title, description,
                                            tags["bluesky"]),
     }
+
+
+def unregistered_tags(image_path: str) -> List[str]:
+    """Return the ``cameracoffeewander|...`` keywords on a photo that the tag
+    tree can't resolve — the tags that still need registering in
+    ``config/tags.json`` (and, in Lightroom, the keywords the tree is missing).
+
+    A keyword is unregistered when its hierarchy path isn't in the tree, or the
+    path resolves but no node on it carries any priority/general tags (an empty
+    stub). Paths are returned without the ``cameracoffeewander|`` root prefix
+    (matching the tag-tree keys and the "Unknown hierarchy tag" message),
+    deduplicated, in first-seen order.
+
+    Raises ValueError when the photo has no XMP or no hierarchical keywords —
+    the same preconditions ``extract_captions`` needs — so the caller can tell
+    "nothing to register" apart from "no metadata to check".
+    """
+    xmp = _read_xmp(image_path)
+    if xmp is None:
+        raise ValueError(
+            "No XMP metadata found — export from Lightroom with metadata included"
+        )
+
+    keywords = _xmp_list(xmp, "lr:hierarchicalSubject")
+    if not keywords:
+        raise ValueError("No Lightroom hierarchical keywords (lr:hierarchicalSubject)")
+
+    tree = _load_tag_tree()
+    missing: List[str] = []
+    for keyword in keywords:
+        if TAG_ROOT not in keyword:
+            continue
+        hierarchy = keyword.replace(f"{TAG_ROOT}|", "")
+        buckets = _lookup(tree, hierarchy.split("|"))
+        registered = buckets is not None and any(
+            b["general"] or b["priority"] for b in buckets
+        )
+        if not registered and hierarchy not in missing:
+            missing.append(hierarchy)
+    return missing

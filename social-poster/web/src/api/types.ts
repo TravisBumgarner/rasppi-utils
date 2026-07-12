@@ -155,3 +155,19 @@ export interface TaggingPreview {
   captions: Captions;
   error: string | null;
 }
+
+/** Per-photo result of the tag checker: the `cameracoffeewander|...` hierarchy
+ * tags the tree can't resolve. `error` is set (and the list empty) when the
+ * photo lacks usable Lightroom metadata. */
+export interface TagCheckFile {
+  filename: string;
+  unregistered: string[];
+  error: string | null;
+}
+
+/** Result of checking a batch of photos. `unregistered` is the deduplicated
+ * union across every file — the tags that still need registering. */
+export interface TagCheckResult {
+  files: TagCheckFile[];
+  unregistered: string[];
+}
