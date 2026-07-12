@@ -2,11 +2,8 @@
   "Camera": {
     "DJIMini3Pro": {
       "general": [
-        "#dji",
-        "#djiphotography",
-        "#djidrone",
-        "#djicreator",
-        "#djimini3pro"
+        "#djimini3pro",
+        "#djidrone"
       ],
       "priority": [],
       "bluesky": [
@@ -17,9 +14,7 @@
     },
     "iPhone13": {
       "general": [
-        "#iphonephotography",
         "#shotoniphone",
-        "#mobilephotography",
         "#iphone13"
       ],
       "priority": [],
@@ -30,9 +25,7 @@
     },
     "iPhone15": {
       "general": [
-        "#iphonephotography",
         "#shotoniphone",
-        "#mobilephotography",
         "#iphone15"
       ],
       "priority": [],
@@ -44,9 +37,7 @@
     "NikonD5300": {
       "general": [
         "#nikond5300",
-        "#nikon",
-        "#nikonphotography",
-        "#nikonphotographer"
+        "#nikonphotography"
       ],
       "priority": [
         "#NikonNoFilter",
@@ -59,9 +50,7 @@
     "NikonD7500": {
       "general": [
         "#nikond7500",
-        "#nikon",
-        "#nikonphotography",
-        "#nikonphotographer"
+        "#nikonphotography"
       ],
       "priority": [
         "#NikonNoFilter",
@@ -73,15 +62,9 @@
     },
     "NikonSLR": {
       "general": [
-        "#filmphotography",
-        "#filmisnotdead",
         "#analogphotography",
-        "#35mm",
-        "#thedaily35mm",
         "#35mmfilm",
-        "#nikon",
-        "#nikonphotography",
-        "#nikonphotographer"
+        "#nikonphotography"
       ],
       "priority": [
         "#analogsunrise",
@@ -100,9 +83,7 @@
     "NikonZ5": {
       "general": [
         "#nikonz5",
-        "#nikon",
-        "#nikonphotography",
-        "#nikonphotographer"
+        "#nikonphotography"
       ],
       "priority": [
         "#NikonNoFilter",
@@ -115,14 +96,9 @@
     },
     "OlympusPS": {
       "general": [
-        "#filmphotography",
-        "#filmisnotdead",
         "#analogphotography",
-        "#35mm",
-        "#thedaily35mm",
         "#35mmfilm",
-        "#olympusphotography",
-        "#olympuscamera"
+        "#olympusphotography"
       ],
       "priority": [
         "#analogsunrise",
@@ -133,25 +109,16 @@
         "@redditanalog"
       ],
       "bluesky": [
-        "#PointandShoot",
         "#filmphotography",
-        "#film",
         "#believeinfilm",
-        "#filmisnotdead",
-        "#infilmwetrust",
-        "#35mmFilm"
+        "#35mmfilm",
+        "#pointandshoot"
       ]
     },
     "PentaxK1000": {
       "general": [
-        "#filmphotography",
-        "#filmisnotdead",
         "#analogphotography",
-        "#35mm",
-        "#thedaily35mm",
         "#35mmfilm",
-        "#pentax",
-        "#k1000",
         "#pentaxk1000"
       ],
       "priority": [
@@ -163,23 +130,16 @@
         "@redditanalog"
       ],
       "bluesky": [
-        "#pentaxK1000",
-        "#pentaxphotography",
         "#filmphotography",
-        "#film",
         "#believeinfilm",
-        "#filmisnotdead",
-        "#infilmwetrust",
-        "#35mmFilm"
+        "#35mmfilm",
+        "#pentaxk1000"
       ]
     },
     "Pixel3": {
       "general": [
         "#shotonpixel",
-        "#pixel3",
-        "#googlepixel3",
-        "#googlepixel",
-        "#pixelartist"
+        "#pixel3"
       ],
       "priority": [],
       "bluesky": [
@@ -189,12 +149,8 @@
     },
     "YashicaC": {
       "general": [
-        "#filmphotography",
-        "#filmisnotdead",
         "#analogphotography",
-        "#120",
         "#120film",
-        "#yashicac",
         "#yashica"
       ],
       "priority": [
@@ -206,22 +162,15 @@
         "@redditanalog"
       ],
       "bluesky": [
-        "#yashica",
         "#filmphotography",
-        "#film",
         "#believeinfilm",
-        "#filmisnotdead",
-        "#infilmwetrust",
+        "#mediumformat",
         "#120film"
       ]
     },
     "UnknownFilmCamera": {
       "general": [
-        "#filmphotography",
-        "#filmisnotdead",
         "#analogphotography",
-        "#35mm",
-        "#thedaily35mm",
         "#35mmfilm"
       ],
       "priority": [
@@ -234,11 +183,8 @@
       ],
       "bluesky": [
         "#filmphotography",
-        "#film",
         "#believeinfilm",
-        "#filmisnotdead",
-        "#infilmwetrust",
-        "#35mmFilm"
+        "#35mmfilm"
       ]
     }
   },
@@ -434,9 +380,7 @@
       ],
       "bluesky": [
         "#ilford",
-        "#delta3200",
-        "#ilfordphoto",
-        "#fridayfavourites"
+        "#delta3200"
       ]
     },
     "IlfordHP5": {
@@ -451,9 +395,7 @@
       ],
       "bluesky": [
         "#ilford",
-        "#hp5",
-        "#ilfordphoto",
-        "#fridayfavourites"
+        "#hp5"
       ]
     },
     "KodakUltramax400": {
@@ -494,9 +436,7 @@
         "@ilfordphoto"
       ],
       "bluesky": [
-        "#kentmere400",
-        "#ilfordphoto",
-        "#fridayfavourites"
+        "#kentmere400"
       ]
     },
     "Kodak400TX": {
@@ -1035,34 +975,31 @@
   "PhotoType": {
     "Animals": {
       "general": [
-        "#animalkingdom",
         "#naturewanderers",
-        "#animallovers",
         "#everything_animals"
       ],
       "priority": [],
       "bluesky": [
+        "#wildlife",
+        "#wildlifephotography",
         "#animals",
-        "#wildlife"
+        "#naturephotography"
       ]
     },
     "Architecture": {
       "general": [
-        "#architecture",
-        "#architecturelovers",
         "#architecturephotography",
         "#arquitectura"
       ],
       "priority": [],
       "bluesky": [
+        "#architecturephotography",
         "#architecture"
       ]
     },
     "Beach": {
       "general": [
-        "#beautifulbeaches",
-        "#beach",
-        "#beaches"
+        "#beautifulbeaches"
       ],
       "priority": [],
       "bluesky": [
@@ -1071,25 +1008,18 @@
     },
     "BlackAndWhite": {
       "general": [
-        "#bnw",
         "#bnwphotography",
-        "#bnwmood",
-        "#bnw_captures",
-        "#bnwphoto"
+        "#bnw_captures"
       ],
       "priority": [],
       "bluesky": [
         "#blackandwhite",
-        "#monochrome",
         "#bnw",
-        "#bnw_captures"
+        "#monochrome"
       ]
     },
     "Cars": {
       "general": [
-        "#cars",
-        "#carsdaily",
-        "#carlovers",
         "#carswithoutlimits",
         "#carstagram"
       ],
@@ -1098,11 +1028,8 @@
     },
     "Clouds": {
       "general": [
-        "#clouds",
         "#cloudscape",
-        "#cloudchaser",
-        "#cloudphotography",
-        "#cloudlovers"
+        "#cloudphotography"
       ],
       "priority": [],
       "bluesky": [
@@ -1112,10 +1039,7 @@
     },
     "Flowers": {
       "general": [
-        "#flowers",
-        "#flowerslovers",
-        "#flowersphotography",
-        "#flowersmakemehappy"
+        "#flowersphotography"
       ],
       "priority": [],
       "bluesky": [
@@ -1126,8 +1050,7 @@
     "Landscape": {
       "general": [
         "#landscapephotography",
-        "#landscape_collection",
-        "#landscapelover"
+        "#landscape_collection"
       ],
       "priority": [],
       "bluesky": [
@@ -1147,8 +1070,7 @@
     },
     "Portrait": {
       "general": [
-        "#portraitphotography",
-        "#portrait"
+        "#portraitphotography"
       ],
       "priority": [],
       "bluesky": [
@@ -1158,7 +1080,6 @@
     },
     "Selfie": {
       "general": [
-        "#selfie",
         "#photographicselfportrait",
         "#artisticselfie"
       ],
@@ -1168,10 +1089,7 @@
     "Stars": {
       "general": [
         "#astrophotography",
-        "#moonlovers",
-        "#astronomy",
-        "#nightshooters",
-        "#nightimages"
+        "#astronomy"
       ],
       "priority": [
         "@milkyway_nightscape",
@@ -1196,11 +1114,8 @@
     },
     "Storms": {
       "general": [
-        "#lightening",
         "#stormphotography",
-        "#stormchasers",
-        "#stormclouds",
-        "#thunderstorms"
+        "#stormchasers"
       ],
       "priority": [],
       "bluesky": [
@@ -1210,12 +1125,8 @@
     },
     "Street": {
       "general": [
-        "#street_perfection",
         "#streetphotography",
-        "#street",
-        "#streetphotographers",
         "#streetclassics",
-        "#streetphotographer",
         "#fotografiacallejera"
       ],
       "priority": [
@@ -1223,15 +1134,13 @@
         "#SDMfeatures"
       ],
       "bluesky": [
-        "#streetart",
-        "#streetphotography"
+        "#streetphotography",
+        "#streetart"
       ]
     },
     "Sunsets": {
       "general": [
-        "#sunset",
-        "#sunsetlovers",
-        "#sunsets"
+        "#sunsetlovers"
       ],
       "priority": [],
       "bluesky": [
@@ -1243,16 +1152,10 @@
   "SocialEvent": {
     "DayOfTheDead": {
       "general": [
-        "#dayofthedead",
         "#DiaDeMuertos",
-        "#DiaDeLosMuertos",
-        "#ddlm",
-        "#marigolds",
         "#catrina",
         "#cempasuchil",
-        "#desfilediademuertoscdmx",
-        "#2denoviembre",
-        "#tradicionesmexicanas"
+        "#marigolds"
       ],
       "priority": [],
       "bluesky": [
@@ -1262,11 +1165,9 @@
     },
     "MexicoCityFireworksFestival": {
       "general": [
-        "#torostultepec",
-        "#pirotecniatultepec",
         "#tultepec",
-        "#tultepeccapitaldelapirotécnia",
-        "#fireworks"
+        "#pirotecniatultepec",
+        "#torostultepec"
       ],
       "priority": [],
       "bluesky": [
@@ -1275,9 +1176,6 @@
     },
     "PrideCelebration": {
       "general": [
-        "#pride",
-        "#pridemonth",
-        "#equality",
         "#orgullocdmx",
         "#marchalgbtcdmx"
       ],
@@ -1301,13 +1199,9 @@
     },
     "WorldCup2026": {
       "general": [
-        "#FIFAWorldCup",
         "#Mundial2026",
         "#EstadioAzteca",
-        "#WeAre26",
-        "#Somos26",
-        "#worldcup",
-        "#futbol"
+        "#WeAre26"
       ],
       "priority": [
         "@mexicocity26_",
