@@ -248,12 +248,18 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
   }, [posts]);
   // Resolve the start-date toggle into the Date slot-filling begins after.
   // Computed inside the slots memo so `now` is only sampled when deps change.
+  // Always clamped to now so a last-post/custom time in the past never
+  // schedules into the past.
   const slots = useMemo(() => {
-    let from = new Date();
+    const now = new Date();
+    let from = now;
     if (startMode === 'afterLast' && lastScheduledAt) {
       from = new Date(lastScheduledAt);
     } else if (startMode === 'custom' && customStart) {
       from = new Date(customStart);
+    }
+    if (from.getTime() < now.getTime()) {
+      from = now;
     }
     return generateSlots(effectiveSchedule, items.length, occupied, from);
   }, [
@@ -366,11 +372,13 @@ export function BulkAddModal({ onClose }: { onClose: () => void }) {
                 <input
                   type="datetime-local"
                   value={customStart}
+                  min={dateToDatetimeLocal(new Date())}
                   onChange={(e) => setCustomStart(e.target.value)}
                 />
               )}
               <span className="muted field-help">
                 Occupied slots are always skipped, so nothing double-books.
+                Start is clamped to now — nothing schedules in the past.
               </span>
             </div>
 
