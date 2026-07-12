@@ -1136,7 +1136,7 @@ textarea {
 .modal--bulk {
   display: flex;
   flex-direction: column;
-  max-width: 1000px;
+  max-width: 1240px;
   height: min(720px, 92vh);
 }
 
