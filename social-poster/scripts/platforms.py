@@ -37,6 +37,10 @@ INSTAGRAM_MAX_ASPECT = 1.91
 CONTAINER_POLL_ATTEMPTS = 30
 CONTAINER_POLL_INTERVAL = 2  # seconds
 
+# Bluesky rejects uploaded image blobs larger than 2,000,000 bytes. We shrink
+# anything above this before upload (see ``_fit_bluesky_blob``).
+BLUESKY_MAX_BLOB_BYTES = 2_000_000
+
 
 def validate_instagram_image(image_path: str) -> None:
     """Raise ``ValueError`` if the image's aspect ratio is outside Instagram's range.
@@ -237,6 +241,47 @@ def derive_alt_text(caption: str) -> str:
     return " ".join(kept)[:ALT_TEXT_LIMIT]
 
 
+def _fit_bluesky_blob(image_bytes: bytes) -> bytes:
+    """Return image bytes guaranteed to be under Bluesky's blob size limit.
+
+    Bluesky rejects any uploaded blob larger than ``BLUESKY_MAX_BLOB_BYTES``
+    with an ``InvalidRequest`` ("blob too big") error. Photos straight off a
+    camera routinely exceed it, so if the bytes are over the cap we re-encode
+    as JPEG at progressively lower quality, then progressively smaller
+    dimensions, until they fit. Under the cap we return the original bytes
+    untouched so already-fine images keep their exact encoding.
+    """
+    if len(image_bytes) <= BLUESKY_MAX_BLOB_BYTES:
+        return image_bytes
+
+    import io
+
+    from PIL import Image
+
+    with Image.open(io.BytesIO(image_bytes)) as im:
+        # JPEG can't hold alpha; flatten to RGB so re-encoding never fails.
+        im = im.convert("RGB")
+
+        for scale in (1.0, 0.85, 0.7, 0.55, 0.4, 0.3):
+            if scale == 1.0:
+                candidate = im
+            else:
+                w, h = im.size
+                candidate = im.resize(
+                    (max(1, int(w * scale)), max(1, int(h * scale))),
+                    Image.LANCZOS,
+                )
+            for quality in (90, 80, 70, 60, 50):
+                buf = io.BytesIO()
+                candidate.save(buf, format="JPEG", quality=quality, optimize=True)
+                data = buf.getvalue()
+                if len(data) <= BLUESKY_MAX_BLOB_BYTES:
+                    return data
+
+    # Fall through: return the smallest attempt we produced (best effort).
+    return data
+
+
 def post_bluesky(creds: Dict, image_path: str, caption: str) -> Optional[str]:
     """Publish a single image post to Bluesky.
 
@@ -251,9 +296,10 @@ def post_bluesky(creds: Dict, image_path: str, caption: str) -> Optional[str]:
     """
     client, _ = _bluesky_login(creds)
     with open(image_path, "rb") as f:
-        record = client.send_image(
-            text=caption, image=f.read(), image_alt=derive_alt_text(caption)
-        )
+        image_bytes = _fit_bluesky_blob(f.read())
+    record = client.send_image(
+        text=caption, image=image_bytes, image_alt=derive_alt_text(caption)
+    )
     return getattr(record, "uri", None)
 
 
