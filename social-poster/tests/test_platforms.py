@@ -220,3 +220,45 @@ def test_post_dispatches_to_instagram(tmp_path, monkeypatch):
 def test_post_rejects_unknown_platform(tmp_path):
     with pytest.raises(ValueError, match="Unknown platform"):
         platforms.post("tiktok", {}, "x.jpg", "cap")
+
+
+# ---------------------------------------------------------------------------
+# _fit_bluesky_blob — keep uploads under Bluesky's 2 MB blob limit
+# ---------------------------------------------------------------------------
+def _oversized_jpeg() -> bytes:
+    """A JPEG whose bytes exceed Bluesky's blob limit (random noise = poor compression)."""
+    noise = Image.frombytes(
+        "RGB", (2200, 2200), os.urandom(2200 * 2200 * 3)
+    )
+    import io
+
+    buf = io.BytesIO()
+    noise.save(buf, format="JPEG", quality=100)
+    data = buf.getvalue()
+    assert len(data) > platforms.BLUESKY_MAX_BLOB_BYTES  # guard the fixture
+    return data
+
+
+def test_fit_bluesky_blob_passes_small_images_through():
+    small = b"already small bytes"
+    assert platforms._fit_bluesky_blob(small) is small
+
+
+def test_fit_bluesky_blob_shrinks_oversized_images():
+    result = platforms._fit_bluesky_blob(_oversized_jpeg())
+    assert len(result) <= platforms.BLUESKY_MAX_BLOB_BYTES
+
+
+def test_post_bluesky_uploads_shrunk_bytes(tmp_path, monkeypatch):
+    path = tmp_path / "big.jpg"
+    path.write_bytes(_oversized_jpeg())
+
+    client = MagicMock()
+    client.send_image.return_value = MagicMock(uri="at://did/app.bsky.feed.post/1")
+    monkeypatch.setattr(platforms, "_bluesky_login", lambda creds: (client, None))
+
+    uri = platforms.post_bluesky({"handle": "h", "app_password": "p"}, str(path), "cap")
+
+    assert uri == "at://did/app.bsky.feed.post/1"
+    sent = client.send_image.call_args.kwargs["image"]
+    assert len(sent) <= platforms.BLUESKY_MAX_BLOB_BYTES
